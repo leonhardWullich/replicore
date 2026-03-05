@@ -19,7 +19,7 @@ void main() {
 
     group('StandardSyncStrategy', () {
       test('should execute all tables in sequence', () async {
-        final strategy = StandardSyncStrategy();
+        final strategy = StandardSyncOrchestration();
 
         final metrics = await strategy.execute(context);
 
@@ -28,7 +28,7 @@ void main() {
       });
 
       test('should return aggregated metrics', () async {
-        final strategy = StandardSyncStrategy();
+        final strategy = StandardSyncOrchestration();
 
         final metrics = await strategy.execute(context);
 
@@ -37,7 +37,7 @@ void main() {
 
       test('should throw on critical errors', () async {
         context.throwOnNextSync = true;
-        final strategy = StandardSyncStrategy();
+        final strategy = StandardSyncOrchestration();
 
         expect(
           () => strategy.execute(context),
@@ -49,7 +49,7 @@ void main() {
     group('OfflineFirstSyncStrategy', () {
       test('should tolerate network errors up to limit', () async {
         context.networkErrorCount = 2;
-        final strategy = OfflineFirstSyncStrategy(maxNetworkErrors: 3);
+        final strategy = OfflineFirstSyncOrchestration(maxNetworkErrors: 3);
 
         final metrics = await strategy.execute(context);
 
@@ -59,7 +59,7 @@ void main() {
 
       test('should stop sync after max network errors', () async {
         context.alwaysThrowNetworkError = true;
-        final strategy = OfflineFirstSyncStrategy(maxNetworkErrors: 2);
+        final strategy = OfflineFirstSyncOrchestration(maxNetworkErrors: 2);
 
         final metrics = await strategy.execute(context);
 
@@ -69,7 +69,7 @@ void main() {
 
       test('should log network error warnings', () async {
         context.networkErrorCount = 1;
-        final strategy = OfflineFirstSyncStrategy();
+        final strategy = OfflineFirstSyncOrchestration();
 
         await strategy.execute(context);
 
@@ -81,7 +81,7 @@ void main() {
 
       test('should reset error counter on success', () async {
         context.networkErrorCount = 2;
-        final strategy = OfflineFirstSyncStrategy(maxNetworkErrors: 5);
+        final strategy = OfflineFirstSyncOrchestration(maxNetworkErrors: 5);
 
         await strategy.execute(context);
 
@@ -90,9 +90,9 @@ void main() {
       });
     });
 
-    group('ManualSyncStrategy', () {
+    group('StrictManualOrchestration', () {
       test('should execute without auto-retry', () async {
-        final strategy = ManualSyncStrategy();
+        final strategy = StrictManualOrchestration();
 
         final metrics = await strategy.execute(context);
 
@@ -101,7 +101,7 @@ void main() {
 
       test('should throw immediately on errors', () async {
         context.throwOnNextSync = true;
-        final strategy = ManualSyncStrategy();
+        final strategy = StrictManualOrchestration();
 
         expect(
           () => strategy.execute(context),
@@ -113,7 +113,7 @@ void main() {
     group('PrioritySyncStrategy', () {
       test('should sync tables in priority order', () async {
         final priorities = {'subscriptions': 100, 'todos': 50, 'logs': 10};
-        final strategy = PrioritySyncStrategy(priorities);
+        final strategy = PrioritySyncOrchestration(priorities);
 
         await strategy.execute(context);
 
@@ -127,7 +127,7 @@ void main() {
           'subscriptions': 100, // critical
           'todos': 50,
         };
-        final strategy = PrioritySyncStrategy(priorities);
+        final strategy = PrioritySyncOrchestration(priorities);
 
         expect(
           () => strategy.execute(context),
@@ -141,7 +141,7 @@ void main() {
           'subscriptions': 100, // critical
           'todos': 10, // non-critical
         };
-        final strategy = PrioritySyncStrategy(priorities);
+        final strategy = PrioritySyncOrchestration(priorities);
 
         final metrics = await strategy.execute(context);
 
@@ -150,7 +150,7 @@ void main() {
       });
 
       test('should apply default priority (0) for unmapped tables', () async {
-        final strategy = PrioritySyncStrategy({});
+        final strategy = PrioritySyncOrchestration({});
 
         final metrics = await strategy.execute(context);
 
@@ -163,7 +163,7 @@ void main() {
         final strategy1 = _TestStrategy(name: 'strategy1');
         final strategy2 = _TestStrategy(name: 'strategy2');
 
-        final composite = CompositeSyncStrategy([strategy1, strategy2]);
+        final composite = CompositeSyncOrchestration([strategy1, strategy2]);
         final metrics = await composite.execute(context);
 
         expect(metrics, isNotNull);
@@ -174,7 +174,7 @@ void main() {
 
       test('should call beforeSync and afterSync hooks', () async {
         final strategy = _TestStrategy(name: 'hooked');
-        final composite = CompositeSyncStrategy([strategy]);
+        final composite = CompositeSyncOrchestration([strategy]);
 
         await composite.execute(context);
 
@@ -192,21 +192,21 @@ void main() {
         final strategy1 = _TestStrategy(name: 's1', returnMetrics: metrics1);
         final strategy2 = _TestStrategy(name: 's2');
 
-        final composite = CompositeSyncStrategy([strategy1, strategy2]);
+        final composite = CompositeSyncOrchestration([strategy1, strategy2]);
         final result = await composite.execute(context);
 
         expect(result, isNotNull);
       });
 
       test('should propagate errors from any strategy', () async {
-        final strategy1 = StandardSyncStrategy();
+        final strategy1 = StandardSyncOrchestration();
         final failingStrategy = _TestStrategy(
           name: 'failing',
           shouldThrow: true,
         );
         final strategy3 = _TestStrategy(name: 's3');
 
-        final composite = CompositeSyncStrategy([
+        final composite = CompositeSyncOrchestration([
           strategy1,
           failingStrategy,
           strategy3,
@@ -255,7 +255,7 @@ void main() {
 }
 
 /// Mock implementation of SyncStrategyContext for testing
-class MockSyncStrategyContext implements SyncStrategyContext {
+class MockSyncStrategyContext implements SyncOrchestrationContext {
   @override
   final Logger logger;
 
@@ -355,12 +355,12 @@ class _TestStrategy extends SyncOrchestrationStrategy {
   });
 
   @override
-  Future<void> beforeSync(SyncStrategyContext context) async {
+  Future<void> beforeSync(SyncOrchestrationContext context) async {
     beforeSyncCalled = true;
   }
 
   @override
-  Future<SyncSessionMetrics> execute(SyncStrategyContext context) async {
+  Future<SyncSessionMetrics> execute(SyncOrchestrationContext context) async {
     executeCalled = true;
     executeIndex = _executionOrder++;
 
@@ -373,7 +373,7 @@ class _TestStrategy extends SyncOrchestrationStrategy {
 
   @override
   Future<void> afterSync(
-    SyncStrategyContext context,
+    SyncOrchestrationContext context,
     SyncSessionMetrics metrics,
   ) async {
     afterSyncCalled = true;

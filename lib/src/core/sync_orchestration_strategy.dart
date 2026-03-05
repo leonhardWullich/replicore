@@ -3,16 +3,16 @@ import 'package:replicore/replicore.dart';
 import 'logger.dart';
 import 'metrics.dart';
 
-/// Defines the lifecycle and behavior of custom sync operations.
+/// Defines the lifecycle and behavior of custom sync orchestrations.
 ///
 /// Extend this interface to implement domain-specific sync logic beyond
 /// the standard pull-push-conflict-resolution pattern.
 ///
-/// Example: Priority-based sync that syncs critical tables first
+/// Example: Priority-based orchestration that syncs critical tables first
 /// ```dart
-/// class PrioritySyncStrategy extends SyncOrchestrationStrategy {
+/// class PrioritySyncOrchestration extends SyncOrchestrationStrategy {
 ///   @override
-///   Future<SyncSessionMetrics> execute(SyncStrategyContext context) async {
+///   Future<SyncSessionMetrics> execute(SyncOrchestrationContext context) async {
 ///     // Sync critical tables first
 ///     final criticalMetrics = await context.managedSyncTable('subscriptions');
 ///     final normalMetrics = await context.managedSyncTable('todos');
@@ -25,33 +25,33 @@ import 'metrics.dart';
 /// }
 /// ```
 abstract class SyncOrchestrationStrategy {
-  /// Execute the custom sync logic.
+  /// Execute the custom sync orchestration logic.
   ///
   /// The [context] provides utilities for controlled table syncing with
   /// automatic metrics collection and error handling.
   ///
   /// Throws [ReplicoreException] on sync errors.
   /// Returns aggregated [SyncSessionMetrics].
-  Future<SyncSessionMetrics> execute(SyncStrategyContext context);
+  Future<SyncSessionMetrics> execute(SyncOrchestrationContext context);
 
   /// Called before sync starts. Override to execute pre-sync hooks.
   ///
   /// Example: Validate network, check storage space.
-  Future<void> beforeSync(SyncStrategyContext context) async {}
+  Future<void> beforeSync(SyncOrchestrationContext context) async {}
 
   /// Called after sync completes (success or failure).
   ///
   /// Example: Persist metrics, trigger UI updates, cleanup.
   Future<void> afterSync(
-    SyncStrategyContext context,
+    SyncOrchestrationContext context,
     SyncSessionMetrics metrics,
   ) async {}
 }
 
-/// Execution context provided to custom sync strategies.
+/// Execution context provided to custom sync orchestrations.
 ///
 /// Provides controlled access to sync operations, metrics, and logging.
-abstract class SyncStrategyContext {
+abstract class SyncOrchestrationContext {
   /// Logger for structured logging throughout sync execution.
   Logger get logger;
 
@@ -85,34 +85,34 @@ abstract class SyncStrategyContext {
   void cancel();
 }
 
-/// Built-in strategy: Standard pull-push-conflicts pattern (default).
+/// Built-in orchestration: Standard pull-push-conflicts pattern (default).
 ///
 /// Syncs all tables in sequence using the standard Replicore flow:
 /// 1. Pull remote changes
 /// 2. Push local changes
 /// 3. Resolve conflicts
 /// 4. Aggregate metrics
-class StandardSyncStrategy extends SyncOrchestrationStrategy {
-  StandardSyncStrategy();
+class StandardSyncOrchestration extends SyncOrchestrationStrategy {
+  StandardSyncOrchestration();
 
   @override
-  Future<SyncSessionMetrics> execute(SyncStrategyContext context) async {
+  Future<SyncSessionMetrics> execute(SyncOrchestrationContext context) async {
     return context.managedSyncAll();
   }
 }
 
-/// Built-in strategy: Offline-first with graceful degradation.
+/// Built-in orchestration: Offline-first with graceful degradation.
 ///
 /// Tolerates network errors gracefully and caches results for retry.
 /// Useful for unreliable networks where partial sync is acceptable.
-class OfflineFirstSyncStrategy extends SyncOrchestrationStrategy {
+class OfflineFirstSyncOrchestration extends SyncOrchestrationStrategy {
   /// Max network errors before stopping sync attempt.
   final int maxNetworkErrors;
 
-  OfflineFirstSyncStrategy({this.maxNetworkErrors = 3});
+  OfflineFirstSyncOrchestration({this.maxNetworkErrors = 3});
 
   @override
-  Future<SyncSessionMetrics> execute(SyncStrategyContext context) async {
+  Future<SyncSessionMetrics> execute(SyncOrchestrationContext context) async {
     final metricsPerTable = <SyncMetrics>[];
     int networkErrors = 0;
 
@@ -145,33 +145,33 @@ class OfflineFirstSyncStrategy extends SyncOrchestrationStrategy {
   }
 }
 
-/// Built-in strategy: Manual-only with strict error handling.
+/// Built-in orchestration: Manual-only with strict error handling.
 ///
 /// Never retries automatically, preserves all errors for user inspection.
 /// Use when you need explicit control over sync decisions.
-class ManualSyncStrategy extends SyncOrchestrationStrategy {
-  ManualSyncStrategy();
+class StrictManualOrchestration extends SyncOrchestrationStrategy {
+  StrictManualOrchestration();
 
   @override
-  Future<SyncSessionMetrics> execute(SyncStrategyContext context) {
+  Future<SyncSessionMetrics> execute(SyncOrchestrationContext context) {
     // Disable auto-retry in context during execution—each error surfaces immediately
     return context.managedSyncAll();
   }
 }
 
-/// Built-in strategy: Selective sync by table priority.
+/// Built-in orchestration: Selective sync by table priority.
 ///
 /// Syncs tables in configurable priority order. Critical tables (high priority)
 /// sync first and fail-fast, while optional tables (low priority) tolerate errors.
-class PrioritySyncStrategy extends SyncOrchestrationStrategy {
+class PrioritySyncOrchestration extends SyncOrchestrationStrategy {
   /// Map of table name -> priority (higher = synced first).
   /// Tables not in map default to priority 0.
   final Map<String, int> tablePriorities;
 
-  PrioritySyncStrategy(this.tablePriorities);
+  PrioritySyncOrchestration(this.tablePriorities);
 
   @override
-  Future<SyncSessionMetrics> execute(SyncStrategyContext context) async {
+  Future<SyncSessionMetrics> execute(SyncOrchestrationContext context) async {
     final metricsPerTable = <SyncMetrics>[];
 
     // Sort tables by priority (descending)
@@ -211,26 +211,26 @@ class PrioritySyncStrategy extends SyncOrchestrationStrategy {
   }
 }
 
-/// Builder for composing multiple strategies sequentially.
+/// Builder for composing multiple orchestrations sequentially.
 ///
 /// Useful for scenarios requiring custom pre/post processing while
-/// delegating core sync logic to built-in strategies.
+/// delegating core sync logic to built-in orchestrations.
 ///
 /// Example:
 /// ```dart
-/// final composed = CompositeSyncStrategy([
-///   PreProcessingStrategy(), // validates data before sync
-///   StandardSyncStrategy(),  // actual sync
-///   PostProcessingStrategy(), // caches metrics after sync
+/// final pipeline = CompositeSyncOrchestration([
+///   PreSyncValidationHook(),       // validates data before sync
+///   StandardSyncOrchestration(),   // actual sync
+///   PostSyncAnalyticsHook(),       // caches/sends metrics after sync
 /// ]);
 /// ```
-class CompositeSyncStrategy extends SyncOrchestrationStrategy {
+class CompositeSyncOrchestration extends SyncOrchestrationStrategy {
   final List<SyncOrchestrationStrategy> strategies;
 
-  CompositeSyncStrategy(this.strategies);
+  CompositeSyncOrchestration(this.strategies);
 
   @override
-  Future<SyncSessionMetrics> execute(SyncStrategyContext context) async {
+  Future<SyncSessionMetrics> execute(SyncOrchestrationContext context) async {
     SyncSessionMetrics? result;
 
     for (final strategy in strategies) {

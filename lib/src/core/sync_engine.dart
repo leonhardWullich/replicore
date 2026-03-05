@@ -519,7 +519,7 @@ class SyncEngine {
 /// Internal implementation of SyncStrategyContext.
 ///
 /// Provides safe, controlled access to sync operations for custom strategies.
-class _SyncStrategyContextImpl extends SyncStrategyContext {
+class _SyncStrategyContextImpl extends SyncOrchestrationContext {
   final SyncEngine engine;
   @override
   final Logger logger;
