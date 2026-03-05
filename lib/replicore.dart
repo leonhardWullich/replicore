@@ -65,7 +65,7 @@ export 'src/core/metrics.dart';
 export 'src/core/models.dart';
 export 'src/core/sync_engine.dart';
 export 'src/core/sync_strategy.dart';
-export 'src/core/sync_strategy_custom.dart';
+export 'src/core/sync_orchestration_strategy.dart';
 export 'src/core/table_config.dart';
 
 export 'src/adapters/remote_adapter.dart';

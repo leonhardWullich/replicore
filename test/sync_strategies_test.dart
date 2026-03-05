@@ -335,7 +335,7 @@ class MockSyncStrategyContext implements SyncStrategyContext {
 }
 
 /// Test strategy for verifying lifecycle hooks and execution flow
-class _TestStrategy extends CustomSyncStrategy {
+class _TestStrategy extends SyncOrchestrationStrategy {
   final String name;
   final bool shouldThrow;
   final SyncSessionMetrics? returnMetrics;

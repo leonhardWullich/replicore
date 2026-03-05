@@ -10,7 +10,7 @@ import 'metrics.dart';
 ///
 /// Example: Priority-based sync that syncs critical tables first
 /// ```dart
-/// class PrioritySyncStrategy extends CustomSyncStrategy {
+/// class PrioritySyncStrategy extends SyncOrchestrationStrategy {
 ///   @override
 ///   Future<SyncSessionMetrics> execute(SyncStrategyContext context) async {
 ///     // Sync critical tables first
@@ -24,7 +24,7 @@ import 'metrics.dart';
 ///   }
 /// }
 /// ```
-abstract class CustomSyncStrategy {
+abstract class SyncOrchestrationStrategy {
   /// Execute the custom sync logic.
   ///
   /// The [context] provides utilities for controlled table syncing with
@@ -92,7 +92,7 @@ abstract class SyncStrategyContext {
 /// 2. Push local changes
 /// 3. Resolve conflicts
 /// 4. Aggregate metrics
-class StandardSyncStrategy extends CustomSyncStrategy {
+class StandardSyncStrategy extends SyncOrchestrationStrategy {
   StandardSyncStrategy();
 
   @override
@@ -105,7 +105,7 @@ class StandardSyncStrategy extends CustomSyncStrategy {
 ///
 /// Tolerates network errors gracefully and caches results for retry.
 /// Useful for unreliable networks where partial sync is acceptable.
-class OfflineFirstSyncStrategy extends CustomSyncStrategy {
+class OfflineFirstSyncStrategy extends SyncOrchestrationStrategy {
   /// Max network errors before stopping sync attempt.
   final int maxNetworkErrors;
 
@@ -149,7 +149,7 @@ class OfflineFirstSyncStrategy extends CustomSyncStrategy {
 ///
 /// Never retries automatically, preserves all errors for user inspection.
 /// Use when you need explicit control over sync decisions.
-class ManualSyncStrategy extends CustomSyncStrategy {
+class ManualSyncStrategy extends SyncOrchestrationStrategy {
   ManualSyncStrategy();
 
   @override
@@ -163,7 +163,7 @@ class ManualSyncStrategy extends CustomSyncStrategy {
 ///
 /// Syncs tables in configurable priority order. Critical tables (high priority)
 /// sync first and fail-fast, while optional tables (low priority) tolerate errors.
-class PrioritySyncStrategy extends CustomSyncStrategy {
+class PrioritySyncStrategy extends SyncOrchestrationStrategy {
   /// Map of table name -> priority (higher = synced first).
   /// Tables not in map default to priority 0.
   final Map<String, int> tablePriorities;
@@ -224,8 +224,8 @@ class PrioritySyncStrategy extends CustomSyncStrategy {
 ///   PostProcessingStrategy(), // caches metrics after sync
 /// ]);
 /// ```
-class CompositeSyncStrategy extends CustomSyncStrategy {
-  final List<CustomSyncStrategy> strategies;
+class CompositeSyncStrategy extends SyncOrchestrationStrategy {
+  final List<SyncOrchestrationStrategy> strategies;
 
   CompositeSyncStrategy(this.strategies);
 

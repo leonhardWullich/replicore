@@ -9,7 +9,7 @@ import 'logger.dart';
 import 'metrics.dart';
 import 'models.dart';
 import 'sync_strategy.dart';
-import 'sync_strategy_custom.dart';
+import 'sync_orchestration_strategy.dart';
 import 'table_config.dart';
 
 /// Enterprise-grade synchronization engine for local-first Flutter applications.
@@ -210,7 +210,7 @@ class SyncEngine {
   /// Throws [ReplicoreException] subclasses on failure.
   /// Returns metrics for the entire sync session.
   Future<SyncSessionMetrics> syncWithStrategy(
-    CustomSyncStrategy strategy,
+    SyncOrchestrationStrategy strategy,
   ) async {
     if (_isSyncing) {
       logger.warning('Custom sync skipped — sync already in progress');

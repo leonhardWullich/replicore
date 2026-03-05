@@ -86,7 +86,7 @@ New Flutter widgets for seamless sync UI integration:
 
 New extensible strategy system for domain-specific sync logic:
 
-- **CustomSyncStrategy** abstract base class
+- **SyncOrchestrationStrategy** abstract base class
   - Implement `execute()` for core sync logic
   - Implement `beforeSync()` for pre-sync hooks
   - Implement `afterSync()` for post-sync processing
@@ -136,7 +136,7 @@ final metrics = await engine.syncWithStrategy(
 
 #### SyncEngine
 
-- New `syncWithStrategy(CustomSyncStrategy)` method
+- New `syncWithStrategy(SyncOrchestrationStrategy)` method
 - Maintains backward compatibility with `syncAll()`
 - Improved documentation
 
