@@ -6,8 +6,8 @@ import '../core/realtime_subscription.dart';
 
 /// Supabase implementation of [RealtimeSubscriptionProvider].
 ///
-/// Uses Supabase's native real-time capabilities (PostgreSQL LISTEN/NOTIFY
-/// via RealtimeClient) for efficient WebSocket-based change notifications.
+/// Uses Supabase's native PostgreSQL LISTEN/NOTIFY mechanism via WebSocket
+/// for efficient real-time change notifications.
 class SupabaseRealtimeProvider implements RealtimeSubscriptionProvider {
   final SupabaseClient client;
   final Duration connectionTimeout;
@@ -31,31 +31,63 @@ class SupabaseRealtimeProvider implements RealtimeSubscriptionProvider {
 
   /// Create a stream of real-time changes for a Postgres table via Supabase.
   ///
-  /// Uses Supabase's RealtimeClient which listens to PostgreSQL NOTIFY events.
-  /// Emit events for INSERT, UPDATE, DELETE operations on the specified table.
+  /// Listens to PostgreSQL INSERT, UPDATE, DELETE events for the specified table.
   Stream<RealtimeChangeEvent> _createRealtimeStream(String table) async* {
     try {
-      // Connection monitoring
+      // Create a StreamController for real-time events
+      final eventStreamController =
+          StreamController<RealtimeChangeEvent>.broadcast();
+
+      // Create channel for this table
+      final channel = client.channel('public:$table');
+
+      // Setup listener for database changes
+      channel
+          .onPostgresChanges(
+            event: PostgresChangeEvent.all,
+            schema: 'public',
+            table: table,
+            callback: (payload) {
+              try {
+                final eventType = payload.eventType.name.toUpperCase();
+                final newRecord = payload.newRecord;
+                final oldRecord = payload.oldRecord;
+
+                final operation = switch (eventType) {
+                  'INSERT' => RealtimeOperation.insert,
+                  'UPDATE' => RealtimeOperation.update,
+                  'DELETE' => RealtimeOperation.delete,
+                  _ => RealtimeOperation.update,
+                };
+
+                final event = RealtimeChangeEvent(
+                  table: table,
+                  operation: operation,
+                  record: operation == RealtimeOperation.delete
+                      ? null
+                      : newRecord,
+                  metadata: {'eventType': eventType, 'previous': oldRecord},
+                  timestamp: DateTime.now(),
+                );
+
+                eventStreamController.add(event);
+              } catch (e) {
+                // Silent fail for individual events
+              }
+            },
+          )
+          .subscribe();
+
+      _subscriptions[table] = eventStreamController.stream.listen(
+        (_) {},
+      ); // Keep stream alive
+
+      // Monitor connection status
       _isConnected = true;
       _connectionStatusController.add(true);
 
-      // Simulate Supabase real-time subscription
-      // In production, this would use Supabase's actual realtime API:
-      //
-      // final channel = client.channel('public:$table');
-      // channel.on(RealtimeListenTypes.postgreChanges, ...).subscribe();
-
-      // For now, emit periodic change events to demonstrate the flow
-      yield* Stream.periodic(const Duration(seconds: 30))
-          .asyncMap((_) {
-            return RealtimeChangeEvent(
-              table: table,
-              operation: RealtimeOperation.update,
-              metadata: {'status': 'listening', 'provider': 'supabase'},
-              timestamp: DateTime.now(),
-            );
-          })
-          .where((event) => false); // Filter out in normal use
+      // Yield events from the controller
+      yield* eventStreamController.stream;
     } catch (e) {
       _isConnected = false;
       _connectionStatusController.add(false);

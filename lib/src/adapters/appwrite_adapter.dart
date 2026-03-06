@@ -324,7 +324,7 @@ class AppwriteAdapter implements RemoteAdapter {
 
   @override
   RealtimeSubscriptionProvider? getRealtimeProvider() {
-    return AppwriteRealtimeProvider(client: client);
+    return AppwriteRealtimeProvider(client: client, databaseId: databaseId);
   }
 }
 

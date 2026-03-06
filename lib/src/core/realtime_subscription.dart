@@ -247,8 +247,15 @@ class RealtimeSubscriptionManager {
     logger.info('Syncing real-time changes in ${tablesToSync.length} table(s)');
 
     try {
-      // Call back to engine to sync these tables
-      // The actual sync is delegated to the caller
+      // Sync each pending table via engine
+      for (final table in tablesToSync) {
+        try {
+          logger.debug('Syncing table "$table" due to real-time change');
+          await engine.syncTable(table);
+        } catch (e) {
+          logger.debug('Failed to sync table "$table": $e');
+        }
+      }
     } catch (e) {
       logger.debug('Error during debounced real-time sync: $e');
     }

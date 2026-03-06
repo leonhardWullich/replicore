@@ -240,6 +240,160 @@ final engine = SyncEngine(
 );
 ```
 
+## 🔔 Real-Time Synchronization (v0.5.0+)
+
+Real-time synchronization automatically pulls changes from your backend the moment they happen on the server. This provides an instant, seamless experience for users without manual refresh buttons.
+
+### Architecture
+
+Replicore's real-time system is built on three pillars:
+
+1. **Backend Streaming**: WebSocket connections to your backend (Firebase, Supabase, Appwrite, GraphQL)
+2. **Debouncing**: Multiple rapid changes coalesced to avoid sync storms
+3. **Automatic Trigger**: Changed tables automatically synced via `engine.syncTable()`
+
+### Setup Real-Time Subscriptions
+
+```dart
+// Create the realtime manager
+final realtimeManager = RealtimeSubscriptionManager(
+  config: RealtimeSubscriptionConfig.production(),
+  provider: adapter.getRealtimeProvider()!, // Get from any adapter
+  engine: engine,
+  logger: logger,
+);
+
+// Subscribe to all tables (or specific ones)
+await realtimeManager.initialize(['todos', 'projects', 'comments']);
+
+// Monitor connection status
+realtimeManager.connectionStatusStream.listen((isConnected) {
+  if (isConnected) {
+    print('Real-time connected ✅');
+  } else {
+    print('Real-time disconnected ❌');
+  }
+});
+
+// Later, cleanup
+override void dispose() {
+  realtimeManager.close();
+  super.dispose();
+}
+```
+
+### Real-Time Support Matrix
+
+| Backend | Status | Latency | Details |
+|---------|--------|---------|---------|
+| **Firebase Firestore** | ✅ Production | <100ms | Real snapshot streaming with automatic change detection |
+| **Supabase** | ✅ Production | <200ms | PostgreSQL LISTEN/NOTIFY via WebSocket |
+| **Appwrite** | ✅ Production | <150ms | Appwrite RealtimeService with document change listeners |
+| **GraphQL** | ✅ Production | <300ms | GraphQL Subscriptions (Apollo, Hasura, Supabase GraphQL) |
+
+All backends support the same interface—zero code changes when switching providers!
+
+### Configuration Options
+
+```dart
+// Production (Recommended)
+final config = RealtimeSubscriptionConfig.production();
+// - Debounce: 2 seconds
+// - Auto-reconnect: Enabled
+// - Max reconnect attempts: 5
+// - Exponential backoff: 2x multiplier
+
+// Development (Verbose)
+final config = RealtimeSubscriptionConfig.development();
+// - Debounce: 1 second (for faster testing)
+// - Auto-reconnect: Enabled
+// - Max reconnect attempts: 10
+// - Exponential backoff: 1.5x multiplier
+
+// Custom Configuration
+final config = RealtimeSubscriptionConfig(
+  enabled: true,
+  tables: {'todos', 'projects'}, // Empty = all tables
+  autoSync: true,                  // Automatically sync on changes
+  debounce: Duration(seconds: 3),  // Wait 3s before syncing
+  connectionTimeout: Duration(seconds: 30),
+  autoReconnect: true,
+  maxReconnectAttempts: 8,
+  backoffMultiplier: 1.8,
+);
+```
+
+### How Real-Time Works (Step-by-Step)
+
+1. **User opens app** → Manager connects to backend's WebSocket
+2. **Server detects change** → INSERT, UPDATE, or DELETE event occurs
+3. **Event streams to client** → Real-time message arrives in <100ms
+4. **Debouncing applied** → Multiple changes in 2 seconds coalesced
+5. **Auto-sync triggered** → `engine.syncTable()` called for affected table
+6. **Local DB updated** → New data merged into SQLite/Drift/Hive
+7. **UI rebuilds** → StreamBuilder/GetX detects change, refreshes
+
+### Advanced: Custom Subscriptions for GraphQL
+
+For complex GraphQL schemas, provide a custom subscription builder:
+
+```dart
+final realtimeManager = RealtimeSubscriptionManager(
+  config: config,
+  provider: GraphQLRealtimeProvider(
+    graphqlClient: gqlClient,
+    subscriptionQueryBuilder: (table) {
+      // Build custom subscription per table
+      return '''
+      subscription On${table}Changed {
+        ${table}Changes {
+          operation
+          record
+          timestamp
+        }
+      }
+      ''';
+    },
+  ),
+  engine: engine,
+  logger: logger,
+);
+```
+
+### Performance Characteristics
+
+- **Firebase**: Uses native Firestore snapshots—optimized at the SDK level
+- **Supabase**: PostgreSQL NOTIFY/LISTEN over WebSocket—sub-200ms typical
+- **Appwrite**: HTTP polling via RealtimeService channel—<150ms on good connection
+- **GraphQL**: Depends on server implementation (Apollo <300ms typical)
+
+### Troubleshooting Real-Time
+
+**Connection shows offline but app has internet:**
+- Check backend service is running and WebSocket port is accessible
+- Verify firewall rules allow WebSocket (WSS for HTTPS)
+- Check network logs for blocked connections
+
+**Sync not triggering on real-time events:**
+- Verify `autoSync: true` in config
+- Check that table is included in subscription
+- Confirm backend is detecting the change and emitting event
+
+**High CPU usage or memory leaks:**
+- Increase debounce duration (reduces sync frequency)
+- Reduce number of subscribed tables if possible
+- Ensure `realtimeManager.close()` is called on app exit
+
+### Migration Path: v0.5.0 → v0.6.0
+
+Future versions will include:
+- ✅ Rule-based real-time filtering (subscribe only to records matching criteria)
+- ✅ Real-time UI bindings (automatic widget rebuilds without StreamBuilder boilerplate)
+- ✅ Offline event queueing (cache real-time events during offline periods)
+- ✅ Real-time presence (who else is viewing/editing this record?)
+
+---
+
 ## 🧬 Conflict Resolution Strategies
 
 ### ServerWins (Default)

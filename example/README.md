@@ -1,12 +1,12 @@
 # Replicore Example: Todo App
 
-A fully-featured Flutter example demonstrating Replicore v0.2.0 (Enterprise Release) with offline-first synchronization, structured logging, metrics collection, and comprehensive error handling.
+A fully-featured Flutter example demonstrating Replicore v0.5.0 (Enterprise Release) with offline-first synchronization, real-time updates, structured logging, metrics collection, and comprehensive error handling.
 
 ## 📋 Project Structure
 
 ```
 lib/
-├── main.dart                     # App entry point with Replicore v0.2.0 setup
+├── main.dart                     # App entry point with Replicore v0.5.0 setup
 ├── data/
 │   ├── todo.dart                 # Data model with sync metadata
 │   └── todo_repository.dart      # Database abstraction layer
@@ -19,16 +19,18 @@ lib/
 
 ## 🚀 What This Example Demonstrates
 
-### 1. **Replicore v0.2.0 Setup** (`main.dart`)
+### 1. **Replicore v0.5.0 Setup** (`main.dart`)
 - ✅ Creating `ReplicoreConfig` with production preset
 - ✅ Structured logging with `ConsoleLogger`
 - ✅ Metrics collection with `InMemoryMetricsCollector`
 - ✅ Error handling during initialization
 - ✅ Multi-table configuration with conflict resolution
+- ✅ Real-time subscription setup with RealtimeSubscriptionManager
 
 ### 2. **Sync Service Architecture** (`sync/sync_service.dart`)
 - ✅ Connectivity-triggered sync (auto-sync on reconnect)
 - ✅ Periodic background sync (60-second intervals)
+- ✅ Real-time event handling with RealtimeSubscriptionManager
 - ✅ Typed exception handling with specialized error types
 - ✅ Status streaming for UI updates
 

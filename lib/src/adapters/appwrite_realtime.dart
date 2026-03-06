@@ -8,60 +8,114 @@ import '../core/realtime_subscription.dart';
 /// document change notifications.
 class AppwriteRealtimeProvider implements RealtimeSubscriptionProvider {
   final dynamic client;
+  final String databaseId;
   final Duration connectionTimeout;
 
   final Map<String, StreamSubscription> _subscriptions = {};
+  final Map<String, StreamController<RealtimeChangeEvent>> _controllers = {};
   bool _isConnected = false;
   late StreamController<bool> _connectionStatusController;
+  StreamSubscription? _realtimeSubscription;
 
   AppwriteRealtimeProvider({
     required this.client,
+    required this.databaseId,
     this.connectionTimeout = const Duration(seconds: 30),
   }) {
     _connectionStatusController = StreamController<bool>.broadcast();
-    _isConnected = true;
+    _setupRealtimeConnection();
+  }
+
+  /// Setup the main Appwrite realtime connection.
+  void _setupRealtimeConnection() {
+    try {
+      // Subscribe to all document events in the database
+      _realtimeSubscription = client.realtime
+          .subscribe(['databases.$databaseId.collections.*'])
+          .listen(
+            (event) {
+              _handleRealtimeMessage(event);
+            },
+            onError: (error) {
+              _isConnected = false;
+              _connectionStatusController.add(false);
+            },
+            onDone: () {
+              _isConnected = false;
+              _connectionStatusController.add(false);
+            },
+          );
+      _isConnected = true;
+      _connectionStatusController.add(true);
+    } catch (e) {
+      _isConnected = false;
+      _connectionStatusController.add(false);
+    }
+  }
+
+  /// Handle incoming Appwrite realtime message.
+  void _handleRealtimeMessage(dynamic message) {
+    try {
+      // Appwrite sends messages with structure:
+      // {
+      //   'type': 'databases.*.collections.*.documents.*.create|update|delete',
+      //   'payload': { document data }
+      // }
+      final type = message['type'] as String? ?? '';
+      final payload = message['payload'] as Map<String, dynamic>? ?? {};
+
+      // Extract collection ID from message type
+      // Format: databases.{databaseId}.collections.{collectionId}.documents.{documentId}.{action}
+      final parts = type.split('.');
+      if (parts.length < 6) return;
+
+      final collectionId = parts[3];
+      final action = parts.last;
+
+      // Determine operation type
+      late RealtimeOperation operation;
+      switch (action) {
+        case 'create':
+          operation = RealtimeOperation.insert;
+          break;
+        case 'update':
+          operation = RealtimeOperation.update;
+          break;
+        case 'delete':
+          operation = RealtimeOperation.delete;
+          break;
+        default:
+          return;
+      }
+
+      // Emit event to appropriate table's controller
+      final controller = _controllers[collectionId];
+      if (controller != null && !controller.isClosed) {
+        controller.add(
+          RealtimeChangeEvent(
+            table: collectionId,
+            operation: operation,
+            record: action != 'delete' ? payload : null,
+            metadata: {
+              'appwriteType': type,
+              'documentId': parts.length > 4 ? parts[5] : null,
+            },
+            timestamp: DateTime.now(),
+          ),
+        );
+      }
+    } catch (e) {
+      // Silently ignore malformed messages
+    }
   }
 
   @override
   Stream<RealtimeChangeEvent> subscribe(String table) {
-    return _createDocumentStream(table);
-  }
-
-  /// Create a stream of real-time changes for Appwrite collection.
-  /// Uses Appwrite's RealtimeService with document channels.
-  Stream<RealtimeChangeEvent> _createDocumentStream(String table) async* {
-    try {
-      // Create a channel name for this collection
-      final channelName = 'documents.$table';
-
-      // Appwrite channels subscribe format: documents.{collectionId}
-      // This requires setting up via Appwrite's realtime API
-
-      // For now, we simulate real-time by polling Appwrite
-      // In production, use Appwrite SDK's built-in realtime:
-      // client.subscribe('documents.$table', (message) { ... })
-
-      // Monitor connection status
-      _isConnected = true;
-      _connectionStatusController.add(true);
-
-      // Yield periodic heartbeat to keep stream alive
-      yield* Stream.periodic(const Duration(seconds: 30))
-          .asyncMap((_) async {
-            // In real implementation, this would receive actual document changes
-            return RealtimeChangeEvent(
-              table: table,
-              operation: RealtimeOperation.update,
-              metadata: {'status': 'heartbeat', 'channel': channelName},
-              timestamp: DateTime.now(),
-            );
-          })
-          .where((event) => false); // Filter heartbeats
-    } catch (e) {
-      _isConnected = false;
-      _connectionStatusController.add(false);
-      yield* Stream.error(e);
+    // Create controller if not exists
+    if (!_controllers.containsKey(table)) {
+      _controllers[table] = StreamController<RealtimeChangeEvent>.broadcast();
     }
+    return _controllers[table]!.stream;
   }
 
   @override
@@ -72,10 +126,17 @@ class AppwriteRealtimeProvider implements RealtimeSubscriptionProvider {
 
   @override
   Future<void> close() async {
+    await _realtimeSubscription?.cancel();
     for (final sub in _subscriptions.values) {
       await sub.cancel();
     }
     _subscriptions.clear();
+
+    for (final controller in _controllers.values) {
+      await controller.close();
+    }
+    _controllers.clear();
+
     await _connectionStatusController.close();
   }
 }
