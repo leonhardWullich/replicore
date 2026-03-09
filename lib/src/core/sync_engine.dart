@@ -359,59 +359,242 @@ class SyncEngine {
   Future<void> _push(TableConfig config, SyncMetrics metrics) async {
     final dirty = await localStore.queryDirty(config.name);
 
-    if (dirty.isNotEmpty) {
-      _emit('Uploading ${dirty.length} changes for ${config.name}...');
-      metrics.recordsPushed = dirty.length;
-      logger.debug(
-        'Starting push for ${config.name}',
-        context: {'dirty_records': dirty.length},
-      );
+    if (dirty.isEmpty) {
+      return;
     }
 
+    _emit('Uploading ${dirty.length} changes for ${config.name}...');
+    logger.debug(
+      'Starting push for ${config.name}',
+      context: {'dirty_records': dirty.length},
+    );
+
+    // Group records by operation type
+    final upserts = <Map<String, dynamic>>[];
+    final softDeletes = <Map<String, dynamic>>[];
+    final operationIds = <dynamic, String>{};
+
     for (final row in dirty) {
+      final pkValue = row[config.primaryKey];
+      if (pkValue == null) continue;
+
+      // Generate or retrieve operation ID
+      var operationId = row[config.operationIdColumn]?.toString();
+      operationId ??= _buildOperationId(config, row);
+      operationIds[pkValue] = operationId;
+
+      // Categorize by operation type
+      final isSoftDeleted = row[config.deletedAtColumn] != null;
+      if (isSoftDeleted) {
+        softDeletes.add(row);
+      } else {
+        upserts.add(row);
+      }
+    }
+
+    // Batch set operation IDs
+    if (operationIds.isNotEmpty) {
+      try {
+        await localStore.setOperationIds(
+          config.name,
+          config.primaryKey,
+          operationIds,
+        );
+      } catch (e) {
+        logger.warning(
+          'Failed to batch set operation IDs, falling back to individual sets',
+          error: e,
+        );
+        // Retry with individual calls as fallback
+        for (final entry in operationIds.entries) {
+          try {
+            await localStore.setOperationId(
+              config.name,
+              config.primaryKey,
+              entry.key,
+              entry.value,
+            );
+          } catch (e2) {
+            logger.warning(
+              'Failed to set operation ID for ${entry.key}',
+              error: e2,
+            );
+          }
+        }
+      }
+    }
+
+    // Process upserts in batch
+    if (upserts.isNotEmpty) {
+      await _pushBatchUpserts(config, upserts, operationIds, metrics);
+    }
+
+    // Process soft deletes in batch
+    if (softDeletes.isNotEmpty) {
+      await _pushBatchSoftDeletes(config, softDeletes, operationIds, metrics);
+    }
+
+    logger.debug('Push completed for ${config.name}');
+  }
+
+  /// Push a batch of upserts using batch operation when possible.
+  Future<void> _pushBatchUpserts(
+    TableConfig config,
+    List<Map<String, dynamic>> records,
+    Map<dynamic, String> operationIds,
+    SyncMetrics metrics,
+  ) async {
+    // Prepare records for upload (remove sync metadata)
+    final uploadRecords = records.map((row) {
+      return Map<String, dynamic>.from(row)
+        ..remove(config.isSyncedColumn)
+        ..remove(config.operationIdColumn);
+    }).toList();
+
+    // Build idempotency key map
+    final idempotencyKeys = <String, String>{};
+    for (final row in records) {
+      final pkValue = row[config.primaryKey];
+      if (pkValue != null && operationIds.containsKey(pkValue)) {
+        idempotencyKeys[pkValue.toString()] = operationIds[pkValue]!;
+      }
+    }
+
+    try {
+      // Attempt batch upsert
+      final successfulIds = await retry(
+        () async {
+          return await remoteAdapter.batchUpsert(
+            table: config.name,
+            records: uploadRecords,
+            primaryKeyColumn: config.primaryKey,
+            idempotencyKeys: idempotencyKeys,
+          );
+        },
+        retries: this.config.maxRetries,
+        initialDelay: this.config.initialRetryDelay,
+        maxDelay: this.config.maxRetryDelay,
+        logger: logger,
+      );
+
+      // Mark successfully synced records
+      if (successfulIds.isNotEmpty) {
+        metrics.recordsPushed += successfulIds.length;
+        await localStore.markManyAsSynced(
+          config.name,
+          config.primaryKey,
+          successfulIds,
+        );
+      }
+
+      // Handle partial failures
+      final failedCount = records.length - successfulIds.length;
+      if (failedCount > 0) {
+        metrics.recordError(
+          'Batch upsert partial failure: $failedCount records failed',
+        );
+      }
+    } on SyncAuthException {
+      metrics.recordError('Auth error: session may have expired');
+      rethrow;
+    } on ReplicoreException catch (e) {
+      // Batch failed, try individual upserts as fallback
+      logger.warning(
+        'Batch upsert failed, falling back to individual operations',
+        error: e,
+      );
+      await _pushIndividualUpserts(config, records, operationIds, metrics);
+    }
+  }
+
+  /// Push a batch of soft deletes using batch operation when possible.
+  Future<void> _pushBatchSoftDeletes(
+    TableConfig config,
+    List<Map<String, dynamic>> records,
+    Map<dynamic, String> operationIds,
+    SyncMetrics metrics,
+  ) async {
+    // Build idempotency key map
+    final idempotencyKeys = <String, String>{};
+    for (final row in records) {
+      final pkValue = row[config.primaryKey];
+      if (pkValue != null && operationIds.containsKey(pkValue)) {
+        idempotencyKeys[pkValue.toString()] = operationIds[pkValue]!;
+      }
+    }
+
+    try {
+      // Attempt batch soft delete
+      final successfulIds = await retry(
+        () async {
+          return await remoteAdapter.batchSoftDelete(
+            table: config.name,
+            primaryKeyColumn: config.primaryKey,
+            records: records,
+            deletedAtColumn: config.deletedAtColumn,
+            updatedAtColumn: config.updatedAtColumn,
+            idempotencyKeys: idempotencyKeys,
+          );
+        },
+        retries: this.config.maxRetries,
+        initialDelay: this.config.initialRetryDelay,
+        maxDelay: this.config.maxRetryDelay,
+        logger: logger,
+      );
+
+      // Mark successfully synced records
+      if (successfulIds.isNotEmpty) {
+        metrics.recordsPushed += successfulIds.length;
+        await localStore.markManyAsSynced(
+          config.name,
+          config.primaryKey,
+          successfulIds,
+        );
+      }
+
+      // Handle partial failures
+      final failedCount = records.length - successfulIds.length;
+      if (failedCount > 0) {
+        metrics.recordError(
+          'Batch soft delete partial failure: $failedCount records failed',
+        );
+      }
+    } on SyncAuthException {
+      metrics.recordError('Auth error: session may have expired');
+      rethrow;
+    } on ReplicoreException catch (e) {
+      // Batch failed, try individual deletes as fallback
+      logger.warning(
+        'Batch soft delete failed, falling back to individual operations',
+        error: e,
+      );
+      await _pushIndividualSoftDeletes(config, records, operationIds, metrics);
+    }
+  }
+
+  /// Fallback: push upserts individually if batch operation fails.
+  Future<void> _pushIndividualUpserts(
+    TableConfig config,
+    List<Map<String, dynamic>> records,
+    Map<dynamic, String> operationIds,
+    SyncMetrics metrics,
+  ) async {
+    for (final row in records) {
       try {
         final pkValue = row[config.primaryKey];
         if (pkValue == null) continue;
-
-        var operationId = row[config.operationIdColumn]?.toString();
-        operationId ??= _buildOperationId(config, row);
-        await localStore.setOperationId(
-          config.name,
-          config.primaryKey,
-          pkValue,
-          operationId,
-        );
 
         final uploadData = Map<String, dynamic>.from(row)
           ..remove(config.isSyncedColumn)
           ..remove(config.operationIdColumn);
 
-        final isSoftDeleted = row[config.deletedAtColumn] != null;
-
-        // SyncNetworkException / SyncAuthException thrown by the adapter
-        // propagate through retry() and are caught in the per-row catch below.
         await retry(
           () async {
-            if (isSoftDeleted) {
-              await remoteAdapter.softDelete(
-                table: config.name,
-                primaryKeyColumn: config.primaryKey,
-                id: pkValue,
-                payload: {
-                  config.deletedAtColumn: row[config.deletedAtColumn],
-                  config.updatedAtColumn:
-                      row[config.updatedAtColumn] ??
-                      DateTime.now().toUtc().toIso8601String(),
-                },
-                idempotencyKey: operationId,
-              );
-            } else {
-              await remoteAdapter.upsert(
-                table: config.name,
-                data: uploadData,
-                idempotencyKey: operationId,
-              );
-            }
+            await remoteAdapter.upsert(
+              table: config.name,
+              data: uploadData,
+              idempotencyKey: operationIds[pkValue],
+            );
           },
           retries: this.config.maxRetries,
           initialDelay: this.config.initialRetryDelay,
@@ -420,21 +603,64 @@ class SyncEngine {
         );
 
         await localStore.markAsSynced(config.name, config.primaryKey, pkValue);
+        metrics.recordsPushed++;
       } on SyncAuthException {
-        // Auth errors affect all records — no point continuing the push loop.
         metrics.recordError('Auth error: session may have expired');
         rethrow;
       } on ReplicoreException catch (e) {
-        // Per-row network/store error: log and keep the record dirty for the
-        // next sync attempt.
         final errorMsg =
             'Push failed for ${config.name} (ID: ${row[config.primaryKey]}): $e';
         metrics.recordError(errorMsg);
         logger.warning(errorMsg, error: e);
       }
     }
+  }
 
-    logger.debug('Push completed for ${config.name}');
+  /// Fallback: push soft deletes individually if batch operation fails.
+  Future<void> _pushIndividualSoftDeletes(
+    TableConfig config,
+    List<Map<String, dynamic>> records,
+    Map<dynamic, String> operationIds,
+    SyncMetrics metrics,
+  ) async {
+    for (final row in records) {
+      try {
+        final pkValue = row[config.primaryKey];
+        if (pkValue == null) continue;
+
+        await retry(
+          () async {
+            await remoteAdapter.softDelete(
+              table: config.name,
+              primaryKeyColumn: config.primaryKey,
+              id: pkValue,
+              payload: {
+                config.deletedAtColumn: row[config.deletedAtColumn],
+                config.updatedAtColumn:
+                    row[config.updatedAtColumn] ??
+                    DateTime.now().toUtc().toIso8601String(),
+              },
+              idempotencyKey: operationIds[pkValue],
+            );
+          },
+          retries: this.config.maxRetries,
+          initialDelay: this.config.initialRetryDelay,
+          maxDelay: this.config.maxRetryDelay,
+          logger: logger,
+        );
+
+        await localStore.markAsSynced(config.name, config.primaryKey, pkValue);
+        metrics.recordsPushed++;
+      } on SyncAuthException {
+        metrics.recordError('Auth error: session may have expired');
+        rethrow;
+      } on ReplicoreException catch (e) {
+        final errorMsg =
+            'Push failed for ${config.name} (ID: ${row[config.primaryKey]}): $e';
+        metrics.recordError(errorMsg);
+        logger.warning(errorMsg, error: e);
+      }
+    }
   }
 
   // ── Conflict resolution ────────────────────────────────────────────────────

@@ -231,6 +231,29 @@ class DriftStore implements LocalStore {
     }
   }
 
+  /// Batch methods use default implementations (fallback to individual calls)
+  @override
+  Future<void> markManyAsSynced(
+    String table,
+    String pkColumn,
+    List<dynamic> primaryKeys,
+  ) async {
+    for (final pk in primaryKeys) {
+      await markAsSynced(table, pkColumn, pk);
+    }
+  }
+
+  @override
+  Future<void> setOperationIds(
+    String table,
+    String pkColumn,
+    Map<dynamic, String> operationIds,
+  ) async {
+    for (final entry in operationIds.entries) {
+      await setOperationId(table, pkColumn, entry.key, entry.value);
+    }
+  }
+
   @override
   Future<Map<String, dynamic>?> findById(
     String table,

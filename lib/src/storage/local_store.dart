@@ -52,6 +52,30 @@ abstract class LocalStore {
     String operationId,
   );
 
+  /// Batch mark multiple records as synced (improves performance).
+  /// If not overridden, falls back to individual markAsSynced calls.
+  Future<void> markManyAsSynced(
+    String table,
+    String pkColumn,
+    List<dynamic> primaryKeys,
+  ) async {
+    for (final pk in primaryKeys) {
+      await markAsSynced(table, pkColumn, pk);
+    }
+  }
+
+  /// Batch set operation IDs for multiple records (improves performance).
+  /// If not overridden, falls back to individual setOperationId calls.
+  Future<void> setOperationIds(
+    String table,
+    String pkColumn,
+    Map<dynamic, String> operationIds,
+  ) async {
+    for (final entry in operationIds.entries) {
+      await setOperationId(table, pkColumn, entry.key, entry.value);
+    }
+  }
+
   Future<Map<String, dynamic>?> findById(
     String table,
     String pkColumn,

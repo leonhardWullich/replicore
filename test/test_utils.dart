@@ -84,6 +84,28 @@ class MockLocalStore implements LocalStore {
   }
 
   @override
+  Future<void> markManyAsSynced(
+    String table,
+    String pkColumn,
+    List<dynamic> primaryKeys,
+  ) async {
+    for (final pk in primaryKeys) {
+      await markAsSynced(table, pkColumn, pk);
+    }
+  }
+
+  @override
+  Future<void> setOperationIds(
+    String table,
+    String pkColumn,
+    Map<dynamic, String> operationIds,
+  ) async {
+    for (final entry in operationIds.entries) {
+      await setOperationId(table, pkColumn, entry.key, entry.value);
+    }
+  }
+
+  @override
   Future<Map<String, dynamic>?> findById(
     String table,
     String pkColumn,
@@ -193,6 +215,55 @@ class MockRemoteAdapter implements RemoteAdapter {
         row['updated_at'] = payload['updated_at'];
       }
     }
+  }
+
+  @override
+  Future<List<dynamic>> batchUpsert({
+    required String table,
+    required List<Map<String, dynamic>> records,
+    required String primaryKeyColumn,
+    Map<String, String>? idempotencyKeys,
+  }) async {
+    final successfulIds = <dynamic>[];
+    for (final record in records) {
+      try {
+        await upsert(table: table, data: record);
+        successfulIds.add(record[primaryKeyColumn]);
+      } catch (e) {
+        // Ignore errors for individual records
+      }
+    }
+    return successfulIds;
+  }
+
+  @override
+  Future<List<dynamic>> batchSoftDelete({
+    required String table,
+    required String primaryKeyColumn,
+    required List<Map<String, dynamic>> records,
+    required String deletedAtColumn,
+    required String updatedAtColumn,
+    Map<String, String>? idempotencyKeys,
+  }) async {
+    final successfulIds = <dynamic>[];
+    for (final record in records) {
+      try {
+        final pkValue = record[primaryKeyColumn];
+        await softDelete(
+          table: table,
+          primaryKeyColumn: primaryKeyColumn,
+          id: pkValue,
+          payload: {
+            deletedAtColumn: record[deletedAtColumn],
+            updatedAtColumn: record[updatedAtColumn],
+          },
+        );
+        successfulIds.add(pkValue);
+      } catch (e) {
+        // Ignore errors for individual records
+      }
+    }
+    return successfulIds;
   }
 }
 

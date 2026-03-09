@@ -170,6 +170,44 @@ class SqfliteStore implements LocalStore {
   }
 
   @override
+  Future<void> markManyAsSynced(
+    String table,
+    String pkColumn,
+    List<dynamic> primaryKeys,
+  ) async {
+    if (primaryKeys.isEmpty) return;
+
+    try {
+      // Use batch operation for better performance
+      final batch = db.batch();
+
+      // SQLite limits host parameters to 999 — chunk to stay safe
+      for (var i = 0; i < primaryKeys.length; i += 900) {
+        final chunk = primaryKeys.sublist(
+          i,
+          (i + 900) > primaryKeys.length ? primaryKeys.length : (i + 900),
+        );
+        final placeholders = List.filled(chunk.length, '?').join(',');
+
+        batch.update(
+          table,
+          {isSyncedColumn: 1, operationIdColumn: null},
+          where: '$pkColumn IN ($placeholders)',
+          whereArgs: chunk,
+        );
+      }
+
+      await batch.commit(noResult: true);
+    } catch (e) {
+      throw LocalStoreException(
+        table: table,
+        message: 'Batch mark as synced failed for table "$table".',
+        cause: e,
+      );
+    }
+  }
+
+  @override
   Future<void> setOperationId(
     String table,
     String pkColumn,
@@ -182,6 +220,37 @@ class SqfliteStore implements LocalStore {
       where: '$pkColumn = ?',
       whereArgs: [primaryKey],
     );
+  }
+
+  @override
+  Future<void> setOperationIds(
+    String table,
+    String pkColumn,
+    Map<dynamic, String> operationIds,
+  ) async {
+    if (operationIds.isEmpty) return;
+
+    try {
+      // Use batch operation for better performance
+      final batch = db.batch();
+
+      for (final entry in operationIds.entries) {
+        batch.update(
+          table,
+          {operationIdColumn: entry.value},
+          where: '$pkColumn = ?',
+          whereArgs: [entry.key],
+        );
+      }
+
+      await batch.commit(noResult: true);
+    } catch (e) {
+      throw LocalStoreException(
+        table: table,
+        message: 'Batch set operation IDs failed for table "$table".',
+        cause: e,
+      );
+    }
   }
 
   // ── Lookups ────────────────────────────────────────────────────────────────

@@ -179,6 +179,93 @@ class FirebaseFirestoreAdapter implements RemoteAdapter {
     }
   }
 
+  @override
+  Future<List<dynamic>> batchUpsert({
+    required String table,
+    required List<Map<String, dynamic>> records,
+    required String primaryKeyColumn,
+    Map<String, String>? idempotencyKeys,
+  }) async {
+    if (records.isEmpty) return [];
+
+    try {
+      // Firestore supports batched writes (up to 500 operations)
+      final batch = firestore.batch();
+      final successfulIds = <dynamic>[];
+
+      for (final record in records) {
+        final id = record[primaryKeyColumn];
+        if (id == null) continue;
+
+        final doc = firestore.collection(table).doc(id.toString());
+        batch.set(doc, record, <String, dynamic>{'merge': true});
+        successfulIds.add(id);
+      }
+
+      await batch.commit().timeout(timeout);
+      return successfulIds;
+    } on TimeoutException catch (e) {
+      throw SyncNetworkException(
+        table: table,
+        message: 'Firestore batch upsert operation timed out.',
+        cause: e,
+      );
+    } catch (e) {
+      throw SyncNetworkException(
+        table: table,
+        message: 'Failed to batch upsert into Firestore table "$table".',
+        cause: e,
+      );
+    }
+  }
+
+  @override
+  Future<List<dynamic>> batchSoftDelete({
+    required String table,
+    required String primaryKeyColumn,
+    required List<Map<String, dynamic>> records,
+    required String deletedAtColumn,
+    required String updatedAtColumn,
+    Map<String, String>? idempotencyKeys,
+  }) async {
+    if (records.isEmpty) return [];
+
+    try {
+      // Firestore supports batched writes (up to 500 operations)
+      final batch = firestore.batch();
+      final successfulIds = <dynamic>[];
+
+      for (final record in records) {
+        final id = record[primaryKeyColumn];
+        if (id == null) continue;
+
+        final doc = firestore.collection(table).doc(id.toString());
+        batch.update(doc, {
+          deletedAtColumn: record[deletedAtColumn],
+          updatedAtColumn:
+              record[updatedAtColumn] ??
+              DateTime.now().toUtc().toIso8601String(),
+        });
+        successfulIds.add(id);
+      }
+
+      await batch.commit().timeout(timeout);
+      return successfulIds;
+    } on TimeoutException catch (e) {
+      throw SyncNetworkException(
+        table: table,
+        message: 'Firestore batch soft delete operation timed out.',
+        cause: e,
+      );
+    } catch (e) {
+      throw SyncNetworkException(
+        table: table,
+        message: 'Failed to batch soft delete from Firestore table "$table".',
+        cause: e,
+      );
+    }
+  }
+
   // ── Firestore-specific features ────────────────────────────────────────────
 
   /// Enable real-time listener for a collection.

@@ -226,6 +226,79 @@ class AppwriteAdapter implements RemoteAdapter {
     }
   }
 
+  @override
+  Future<List<dynamic>> batchUpsert({
+    required String table,
+    required List<Map<String, dynamic>> records,
+    required String primaryKeyColumn,
+    Map<String, String>? idempotencyKeys,
+  }) async {
+    if (records.isEmpty) return [];
+
+    // Appwrite doesn't have native batch operations,
+    // but we can process records in parallel for better performance
+    final results = await Future.wait(
+      records.map((record) async {
+        try {
+          final pkValue = record[primaryKeyColumn];
+          await upsert(
+            table: table,
+            data: record,
+            idempotencyKey: idempotencyKeys?[pkValue?.toString()],
+          );
+          return pkValue;
+        } catch (e) {
+          return null; // Failed records return null
+        }
+      }),
+    );
+
+    // Return only successful IDs
+    return results.where((id) => id != null).toList();
+  }
+
+  @override
+  Future<List<dynamic>> batchSoftDelete({
+    required String table,
+    required String primaryKeyColumn,
+    required List<Map<String, dynamic>> records,
+    required String deletedAtColumn,
+    required String updatedAtColumn,
+    Map<String, String>? idempotencyKeys,
+  }) async {
+    if (records.isEmpty) return [];
+
+    // Appwrite doesn't have native batch operations,
+    // but we can process records in parallel for better performance
+    final results = await Future.wait(
+      records.map((record) async {
+        try {
+          final pkValue = record[primaryKeyColumn];
+          if (pkValue == null) return null;
+
+          await softDelete(
+            table: table,
+            primaryKeyColumn: primaryKeyColumn,
+            id: pkValue,
+            payload: {
+              deletedAtColumn: record[deletedAtColumn],
+              updatedAtColumn:
+                  record[updatedAtColumn] ??
+                  DateTime.now().toUtc().toIso8601String(),
+            },
+            idempotencyKey: idempotencyKeys?[pkValue.toString()],
+          );
+          return pkValue;
+        } catch (e) {
+          return null; // Failed records return null
+        }
+      }),
+    );
+
+    // Return only successful IDs
+    return results.where((id) => id != null).toList();
+  }
+
   // ── Appwrite-specific features ─────────────────────────────────────────────
 
   /// Execute a custom Appwrite Function.

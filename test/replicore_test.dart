@@ -77,6 +77,28 @@ class InMemoryLocalStore implements LocalStore {
   }
 
   @override
+  Future<void> markManyAsSynced(
+    String table,
+    String pkColumn,
+    List<dynamic> primaryKeys,
+  ) async {
+    for (final pk in primaryKeys) {
+      await markAsSynced(table, pkColumn, pk);
+    }
+  }
+
+  @override
+  Future<void> setOperationIds(
+    String table,
+    String pkColumn,
+    Map<dynamic, String> operationIds,
+  ) async {
+    for (final entry in operationIds.entries) {
+      await setOperationId(table, pkColumn, entry.key, entry.value);
+    }
+  }
+
+  @override
   Future<void> upsertBatch(
     String table,
     List<Map<String, dynamic>> records,
@@ -200,6 +222,64 @@ class FakeRemoteAdapter implements RemoteAdapter {
       throw Exception('planned failure');
     }
     upserts.add({'table': table, 'data': data, 'op_id': idempotencyKey});
+  }
+
+  @override
+  Future<List<dynamic>> batchUpsert({
+    required String table,
+    required List<Map<String, dynamic>> records,
+    required String primaryKeyColumn,
+    Map<String, String>? idempotencyKeys,
+  }) async {
+    final successfulIds = <dynamic>[];
+    for (final record in records) {
+      try {
+        final pkValue = record[primaryKeyColumn];
+        await upsert(
+          table: table,
+          data: record,
+          idempotencyKey: idempotencyKeys?[pkValue?.toString()],
+        );
+        successfulIds.add(pkValue);
+      } catch (e) {
+        // Ignore failures for test purposes
+      }
+    }
+    return successfulIds;
+  }
+
+  @override
+  Future<List<dynamic>> batchSoftDelete({
+    required String table,
+    required String primaryKeyColumn,
+    required List<Map<String, dynamic>> records,
+    required String deletedAtColumn,
+    required String updatedAtColumn,
+    Map<String, String>? idempotencyKeys,
+  }) async {
+    final successfulIds = <dynamic>[];
+    for (final record in records) {
+      try {
+        final pkValue = record[primaryKeyColumn];
+        if (pkValue == null) continue;
+        await softDelete(
+          table: table,
+          primaryKeyColumn: primaryKeyColumn,
+          id: pkValue,
+          payload: {
+            deletedAtColumn: record[deletedAtColumn],
+            updatedAtColumn:
+                record[updatedAtColumn] ??
+                DateTime.now().toUtc().toIso8601String(),
+          },
+          idempotencyKey: idempotencyKeys?[pkValue?.toString()],
+        );
+        successfulIds.add(pkValue);
+      } catch (e) {
+        // Ignore failures for test purposes
+      }
+    }
+    return successfulIds;
   }
 }
 
@@ -677,4 +757,26 @@ class _FailingPullAdapter implements RemoteAdapter {
     required Map<String, dynamic> data,
     String? idempotencyKey,
   }) async {}
+
+  @override
+  Future<List<dynamic>> batchUpsert({
+    required String table,
+    required List<Map<String, dynamic>> records,
+    required String primaryKeyColumn,
+    Map<String, String>? idempotencyKeys,
+  }) async {
+    return records.map((r) => r[primaryKeyColumn]).toList();
+  }
+
+  @override
+  Future<List<dynamic>> batchSoftDelete({
+    required String table,
+    required String primaryKeyColumn,
+    required List<Map<String, dynamic>> records,
+    required String deletedAtColumn,
+    required String updatedAtColumn,
+    Map<String, String>? idempotencyKeys,
+  }) async {
+    return records.map((r) => r[primaryKeyColumn]).toList();
+  }
 }

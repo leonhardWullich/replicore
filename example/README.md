@@ -1,6 +1,6 @@
 # Replicore Example: Todo App
 
-A fully-featured Flutter example demonstrating Replicore v0.5.0 (Enterprise Release) with offline-first synchronization, real-time updates, structured logging, metrics collection, and comprehensive error handling.
+A fully-featured Flutter example demonstrating Replicore v0.5.1 (Performance Release) with offline-first synchronization, real-time updates, batch operations, structured logging, metrics collection, and comprehensive error handling.
 
 ## 📋 Project Structure
 

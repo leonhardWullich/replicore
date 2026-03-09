@@ -148,6 +148,77 @@ class SupabaseAdapter implements RemoteAdapter {
     }
   }
 
+  @override
+  Future<List<dynamic>> batchUpsert({
+    required String table,
+    required List<Map<String, dynamic>> records,
+    required String primaryKeyColumn,
+    Map<String, String>? idempotencyKeys,
+  }) async {
+    if (records.isEmpty) return [];
+
+    try {
+      // Supabase supports bulk upsert natively
+      await client.from(table).upsert(records);
+
+      // Return all primary keys on success
+      return records
+          .map((r) => r[primaryKeyColumn])
+          .where((id) => id != null)
+          .toList();
+    } on AuthException catch (e) {
+      throw SyncAuthException(table: table, cause: e);
+    } catch (e) {
+      throw SyncNetworkException(
+        table: table,
+        message: 'Batch upsert failed for table "$table".',
+        cause: e,
+      );
+    }
+  }
+
+  @override
+  Future<List<dynamic>> batchSoftDelete({
+    required String table,
+    required String primaryKeyColumn,
+    required List<Map<String, dynamic>> records,
+    required String deletedAtColumn,
+    required String updatedAtColumn,
+    Map<String, String>? idempotencyKeys,
+  }) async {
+    if (records.isEmpty) return [];
+
+    try {
+      // Supabase doesn't have native batch update by IDs,
+      // so we use upsert with deleted_at set
+      final updates = records.map((record) {
+        return {
+          primaryKeyColumn: record[primaryKeyColumn],
+          deletedAtColumn: record[deletedAtColumn],
+          updatedAtColumn:
+              record[updatedAtColumn] ??
+              DateTime.now().toUtc().toIso8601String(),
+        };
+      }).toList();
+
+      await client.from(table).upsert(updates);
+
+      // Return all primary keys on success
+      return records
+          .map((r) => r[primaryKeyColumn])
+          .where((id) => id != null)
+          .toList();
+    } on AuthException catch (e) {
+      throw SyncAuthException(table: table, cause: e);
+    } catch (e) {
+      throw SyncNetworkException(
+        table: table,
+        message: 'Batch soft delete failed for table "$table".',
+        cause: e,
+      );
+    }
+  }
+
   // ── Helpers ────────────────────────────────────────────────────────────────
 
   String _toFilterLiteral(dynamic value) {
