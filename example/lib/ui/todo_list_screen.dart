@@ -32,6 +32,7 @@ class _TodoListScreenState extends State<TodoListScreen> {
   List<Todo> _todos = [];
   bool _loading = true;
   SyncSessionMetrics? _lastMetrics;
+  final List<_SyncHistoryEntry> _syncHistory = [];
   bool _syncing = false;
 
   String get _userId => Supabase.instance.client.auth.currentUser!.id;
@@ -124,7 +125,19 @@ class _TodoListScreenState extends State<TodoListScreen> {
     try {
       widget.logger.info('Manual sync started');
       final metrics = await widget.engine.syncAll();
-      setState(() => _lastMetrics = metrics);
+      setState(() {
+        _lastMetrics = metrics;
+        _syncHistory.insert(
+            0,
+            _SyncHistoryEntry(
+              timestamp: DateTime.now(),
+              metrics: metrics,
+            ));
+        // Keep only last 50 syncs
+        if (_syncHistory.length > 50) {
+          _syncHistory.removeLast();
+        }
+      });
 
       widget.logger.info('Manual sync completed', context: {
         'success': metrics.overallSuccess,
@@ -357,17 +370,349 @@ class _TodoListScreenState extends State<TodoListScreen> {
   void _showMetricsDialog() {
     showDialog(
       context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Sync Metrics'),
-        content: SingleChildScrollView(
-          child: _lastMetrics == null
-              ? const Text('No sync has been performed yet.')
-              : Text(_lastMetrics.toString()),
+      builder: (_) => Dialog(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 600, maxHeight: 700),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Header
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.primaryContainer,
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(28),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.analytics_outlined,
+                      color: Theme.of(context).colorScheme.onPrimaryContainer,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        'Sync History',
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onPrimaryContainer,
+                            ),
+                      ),
+                    ),
+                    Text(
+                      '${_syncHistory.length} syncs',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: Theme.of(context)
+                                .colorScheme
+                                .onPrimaryContainer,
+                          ),
+                    ),
+                  ],
+                ),
+              ),
+              // Content
+              Expanded(
+                child: _syncHistory.isEmpty
+                    ? const Center(
+                        child: Padding(
+                          padding: EdgeInsets.all(24),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.sync_disabled,
+                                  size: 48, color: Colors.grey),
+                              SizedBox(height: 16),
+                              Text(
+                                'No sync performed yet',
+                                style: TextStyle(color: Colors.grey),
+                              ),
+                            ],
+                          ),
+                        ),
+                      )
+                    : ListView.builder(
+                        padding: const EdgeInsets.all(8),
+                        itemCount: _syncHistory.length,
+                        itemBuilder: (context, index) {
+                          final entry = _syncHistory[index];
+                          return _SyncHistoryTile(
+                            entry: entry,
+                            isFirst: index == 0,
+                          );
+                        },
+                      ),
+              ),
+              // Footer
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  border: Border(
+                    top: BorderSide(
+                      color: Theme.of(context).dividerColor,
+                    ),
+                  ),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    if (_syncHistory.isNotEmpty)
+                      TextButton.icon(
+                        onPressed: () {
+                          setState(() => _syncHistory.clear());
+                          Navigator.of(context).pop();
+                        },
+                        icon: const Icon(Icons.delete_outline),
+                        label: const Text('Clear History'),
+                      ),
+                    const SizedBox(width: 8),
+                    FilledButton(
+                      onPressed: Navigator.of(context).pop,
+                      child: const Text('Close'),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
-        actions: [
-          TextButton(
-            onPressed: Navigator.of(context).pop,
-            child: const Text('Close'),
+      ),
+    );
+  }
+}
+
+// ── Sync History Models & Widgets ────────────────────────────────────────────
+
+class _SyncHistoryEntry {
+  final DateTime timestamp;
+  final SyncSessionMetrics metrics;
+
+  _SyncHistoryEntry({required this.timestamp, required this.metrics});
+}
+
+class _SyncHistoryTile extends StatefulWidget {
+  final _SyncHistoryEntry entry;
+  final bool isFirst;
+
+  const _SyncHistoryTile({required this.entry, required this.isFirst});
+
+  @override
+  State<_SyncHistoryTile> createState() => _SyncHistoryTileState();
+}
+
+class _SyncHistoryTileState extends State<_SyncHistoryTile> {
+  bool _expanded = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _expanded = widget.isFirst; // Auto-expand first item
+  }
+
+  String _formatDuration(Duration d) {
+    if (d.inSeconds < 1) return '${d.inMilliseconds}ms';
+    if (d.inMinutes < 1) return '${d.inSeconds}s';
+    return '${d.inMinutes}m ${d.inSeconds % 60}s';
+  }
+
+  String _formatTimestamp(DateTime dt) {
+    final now = DateTime.now();
+    final diff = now.difference(dt);
+
+    if (diff.inMinutes < 1) return 'Just now';
+    if (diff.inHours < 1) return '${diff.inMinutes}m ago';
+    if (diff.inDays < 1) return '${diff.inHours}h ago';
+    if (diff.inDays == 1) return 'Yesterday';
+    if (diff.inDays < 7) return '${diff.inDays}d ago';
+
+    return '${dt.day}.${dt.month}.${dt.year} ${dt.hour}:${dt.minute.toString().padLeft(2, '0')}';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final m = widget.entry.metrics;
+    final isSuccess = m.overallSuccess;
+
+    return Card(
+      margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 0),
+      elevation: _expanded ? 2 : 0,
+      child: Column(
+        children: [
+          InkWell(
+            onTap: () => setState(() => _expanded = !_expanded),
+            borderRadius: BorderRadius.circular(12),
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Row(
+                children: [
+                  // Status icon
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: isSuccess
+                          ? Colors.green.withOpacity(0.1)
+                          : Colors.orange.withOpacity(0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      isSuccess ? Icons.check_circle : Icons.warning,
+                      color: isSuccess ? Colors.green : Colors.orange,
+                      size: 20,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  // Timestamp & summary
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          _formatTimestamp(widget.entry.timestamp),
+                          style:
+                              Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          '↓ ${m.totalRecordsPulled}  ↑ ${m.totalRecordsPushed}  · ${_formatDuration(m.totalDuration)}',
+                          style:
+                              Theme.of(context).textTheme.bodySmall?.copyWith(
+                                    color: Colors.grey[600],
+                                  ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  // Expand icon
+                  Icon(
+                    _expanded ? Icons.expand_less : Icons.expand_more,
+                    color: Colors.grey,
+                  ),
+                ],
+              ),
+            ),
+          ),
+          // Expanded details
+          if (_expanded)
+            Container(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Divider(color: Colors.grey[300]),
+                  const SizedBox(height: 8),
+                  // Metrics grid
+                  _MetricRow(
+                    label: 'Duration',
+                    value: _formatDuration(m.totalDuration),
+                    icon: Icons.timer_outlined,
+                  ),
+                  _MetricRow(
+                    label: 'Records Pulled',
+                    value: '${m.totalRecordsPulled}',
+                    icon: Icons.download_outlined,
+                  ),
+                  _MetricRow(
+                    label: 'Records Pushed',
+                    value: '${m.totalRecordsPushed}',
+                    icon: Icons.upload_outlined,
+                  ),
+                  _MetricRow(
+                    label: 'Conflicts',
+                    value: '${m.totalConflicts}',
+                    icon: Icons.merge_outlined,
+                  ),
+                  if (m.totalErrors > 0)
+                    _MetricRow(
+                      label: 'Errors',
+                      value: '${m.totalErrors}',
+                      icon: Icons.error_outline,
+                      valueColor: Colors.red,
+                    ),
+                  const SizedBox(height: 8),
+                  // Table-specific breakdown
+                  if (m.tableMetrics.isNotEmpty) ...[
+                    Text(
+                      'Per-Table Breakdown',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            fontWeight: FontWeight.w600,
+                            color: Colors.grey[700],
+                          ),
+                    ),
+                    const SizedBox(height: 8),
+                    ...m.tableMetrics.map((tm) {
+                      return Padding(
+                        padding: const EdgeInsets.only(left: 8, bottom: 4),
+                        child: Row(
+                          children: [
+                            Icon(Icons.table_chart_outlined,
+                                size: 14, color: Colors.grey[600]),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                tm.tableName,
+                                style: Theme.of(context).textTheme.bodySmall,
+                              ),
+                            ),
+                            Text(
+                              '↓${tm.recordsPulled} ↑${tm.recordsPushed}',
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodySmall
+                                  ?.copyWith(
+                                    color: Colors.grey[600],
+                                  ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }),
+                  ],
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MetricRow extends StatelessWidget {
+  final String label;
+  final String value;
+  final IconData icon;
+  final Color? valueColor;
+
+  const _MetricRow({
+    required this.label,
+    required this.value,
+    required this.icon,
+    this.valueColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        children: [
+          Icon(icon, size: 16, color: Colors.grey[600]),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              label,
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+          ),
+          Text(
+            value,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: valueColor,
+                ),
           ),
         ],
       ),

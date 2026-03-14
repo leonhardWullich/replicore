@@ -80,12 +80,23 @@ def page(filename, title, body, subtitle=""):
         '<title>' + title + ' — Replicore Docs</title>\n'
         '<link rel="stylesheet" href="assets/style.css">\n'
         '<script src="assets/app.js"></script>\n'
+        '<script src="assets/search.js"></script>\n'
         '</head>\n<body>\n'
         '<div class="topbar">\n'
         '  <button class="hamburger" onclick="toggleSidebar()">☰</button>\n'
         '  <div class="logo">Replicore <span>v0.5.1 Docs</span></div>\n'
         '  <div class="spacer"></div>\n'
+        '  <button class="search-trigger" onclick="openSearch()">🔍 Search <kbd>⌘K</kbd></button>\n'
         '  <button id="theme-btn" onclick="toggleDark()">🌙 Dark</button>\n'
+        '</div>\n'
+        '<div id="search-overlay">\n'
+        '  <div class="search-modal">\n'
+        '    <div class="search-header">\n'
+        '      <input id="search-input" type="text" placeholder="Search docs…" autocomplete="off">\n'
+        '      <button id="search-close">Esc</button>\n'
+        '    </div>\n'
+        '    <div id="search-results"></div>\n'
+        '  </div>\n'
         '</div>\n'
         '<div class="page">\n'
         '<nav class="sidebar">' + sidebar_html(filename) + '</nav>\n'
@@ -1849,3 +1860,41 @@ subtitle="Version history"
 )
 
 print("\n✅ Generated " + str(len(FLAT)) + " documentation pages in docs_html/")
+
+# ── SEARCH INDEX ──────────────────────────────────────────────────────────────
+import re, json
+
+def strip_tags(html_str):
+    """Remove HTML tags and collapse whitespace."""
+    text = re.sub(r'<[^>]+>', ' ', html_str)
+    text = re.sub(r'\s+', ' ', text)
+    return text.strip()
+
+def extract_sections(html_str):
+    """Extract h2/h3 heading text from HTML body."""
+    return [strip_tags(m) for m in re.findall(r'<h[23][^>]*>(.*?)</h[23]>', html_str, re.DOTALL)]
+
+search_index = []
+for href, title in FLAT:
+    filepath = os.path.join(OUT, href)
+    if not os.path.exists(filepath):
+        continue
+    with open(filepath, "r") as f:
+        html_content = f.read()
+    # Extract the <main> body to avoid indexing sidebar/nav
+    main_match = re.search(r'<main[^>]*>(.*?)</main>', html_content, re.DOTALL)
+    body_html = main_match.group(1) if main_match else html_content
+    sections = extract_sections(body_html)
+    content_text = strip_tags(body_html)
+    search_index.append({
+        "title": title,
+        "url": href,
+        "sections": sections,
+        "content": content_text,
+    })
+
+index_path = os.path.join(OUT, "search-index.json")
+with open(index_path, "w") as f:
+    json.dump(search_index, f, ensure_ascii=False)
+
+print("🔍 Generated search-index.json (" + str(len(search_index)) + " pages indexed)")

@@ -88,7 +88,7 @@ FLUTTER_CMD="${1:-run}"
 shift || true
 FLUTTER_ARGS=("$@")
 
-echo -e "${YELLOW}▸ Running: flutter $FLUTTER_CMD ${FLUTTER_ARGS[*]}${NC}"
+echo -e "${YELLOW}▸ Running: flutter $FLUTTER_CMD ${FLUTTER_ARGS[*]+"${FLUTTER_ARGS[*]}"}${NC}"
 echo -e "${YELLOW}  in: ${BUILD_DIR}${NC}"
 echo ""
 
@@ -98,7 +98,7 @@ cd "$BUILD_DIR"
 flutter pub get --no-example 2>/dev/null || true
 
 # Run the actual flutter command
-flutter "$FLUTTER_CMD" "${FLUTTER_ARGS[@]}"
+flutter "$FLUTTER_CMD" ${FLUTTER_ARGS[@]+"${FLUTTER_ARGS[@]}"}
 
 # ── Step 3: Sync back any generated files ─────────────────────────────────────
 echo ""

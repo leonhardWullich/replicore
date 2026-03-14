@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:replicore/replicore.dart';
-import 'package:sqflite/sqflite.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../main.dart';
 import 'todo_list_screen.dart';
 
 /// Minimal email + password login screen.
@@ -36,15 +36,14 @@ class _LoginScreenState extends State<LoginScreen> {
 
       if (!mounted) return;
 
-      // Pull the db + engine from the widget tree (passed via constructor in
-      // a real app — simplified here for brevity).
+      // Navigate to todo list using global app state
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(
           builder: (_) => TodoListScreen(
-            db: _dbFromContext(context),
-            engine: _engineFromContext(context),
-            logger: ConsoleLogger(),
-            metricsCollector: InMemoryMetricsCollector(),
+            db: appDb,
+            engine: appEngine,
+            logger: appLogger,
+            metricsCollector: appMetricsCollector,
           ),
         ),
       );
@@ -119,11 +118,3 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 }
-
-// In a real app you would use get_it, Riverpod, or Provider to access these.
-// Shown as stubs here to keep the example self-contained.
-Database _dbFromContext(BuildContext context) =>
-    throw UnimplementedError('Inject via get_it or Provider');
-
-SyncEngine _engineFromContext(BuildContext context) =>
-    throw UnimplementedError('Inject via get_it or Provider');

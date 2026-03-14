@@ -5,13 +5,24 @@
 <title>Hive Storage — Replicore Docs</title>
 <link rel="stylesheet" href="assets/style.css">
 <script src="assets/app.js"></script>
+<script src="assets/search.js"></script>
 </head>
 <body>
 <div class="topbar">
   <button class="hamburger" onclick="toggleSidebar()">☰</button>
   <div class="logo">Replicore <span>v0.5.1 Docs</span></div>
   <div class="spacer"></div>
+  <button class="search-trigger" onclick="openSearch()">🔍 Search <kbd>⌘K</kbd></button>
   <button id="theme-btn" onclick="toggleDark()">🌙 Dark</button>
+</div>
+<div id="search-overlay">
+  <div class="search-modal">
+    <div class="search-header">
+      <input id="search-input" type="text" placeholder="Search docs…" autocomplete="off">
+      <button id="search-close">Esc</button>
+    </div>
+    <div id="search-results"></div>
+  </div>
 </div>
 <div class="page">
 <nav class="sidebar"><div class="section-title">GETTING STARTED</div>

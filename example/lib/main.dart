@@ -8,6 +8,12 @@ import 'sync/sync_service.dart';
 import 'ui/login_screen.dart';
 import 'ui/todo_list_screen.dart';
 
+// ── Global app state (accessed by screens via appDb, appEngine, etc.) ────────
+late Database appDb;
+late SyncEngine appEngine;
+late Logger appLogger;
+late MetricsCollector appMetricsCollector;
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -15,12 +21,13 @@ Future<void> main() async {
   // IMPORTANT: Run the setup in example/supabase_setup.md to create the tables
   // or provide the required credentials below.
   await Supabase.initialize(
-    url: 'SUPABASE_URL',
-    anonKey: 'SUPABASE_ANON_KEY',
+    url: 'https://eymcvxrloanvjapoogkh.supabase.co',
+    anonKey:
+        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV5bWN2eHJsb2FudmphcG9vZ2toIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI2MzM3ODEsImV4cCI6MjA4ODIwOTc4MX0.Coe-WYoXPsf88Xwy4ZIgRyrA0w4nq9Mm1bC5VrCc1lI',
   );
 
   // ── 2. Open Local SQLite Database ──────────────────────────────────────────
-  final db = await openDatabase(
+  appDb = await openDatabase(
     join(await getDatabasesPath(), 'replicore_example.db'),
     version: 1,
     onCreate: (db, _) async {
@@ -41,7 +48,7 @@ Future<void> main() async {
 
   // Create local store (handles both data and sync cursors)
   final localStore =
-      SqfliteStore(db, conflictAlgorithm: ConflictAlgorithm.replace);
+      SqfliteStore(appDb, conflictAlgorithm: ConflictAlgorithm.replace);
 
   // Create remote adapter for Supabase
   final remoteAdapter = SupabaseAdapter(
@@ -52,18 +59,18 @@ Future<void> main() async {
   );
 
   // Create logger (console output for development)
-  final logger = ConsoleLogger(minLevel: LogLevel.info);
+  appLogger = ConsoleLogger(minLevel: LogLevel.info);
 
   // Create metrics collector (in-memory for this example)
-  final metricsCollector = InMemoryMetricsCollector();
+  appMetricsCollector = InMemoryMetricsCollector();
 
   // Create SyncEngine with production configuration
-  final engine = SyncEngine(
+  appEngine = SyncEngine(
     localStore: localStore,
     remoteAdapter: remoteAdapter,
     config: ReplicoreConfig.production(),
-    logger: logger,
-    metricsCollector: metricsCollector,
+    logger: appLogger,
+    metricsCollector: appMetricsCollector,
   )..registerTable(
       TableConfig(
         name: 'todos',
@@ -83,20 +90,20 @@ Future<void> main() async {
 
   // Initialize engine (idempotent — safe to call on every app start)
   try {
-    await engine.init();
+    await appEngine.init();
   } catch (e) {
-    logger.error('Failed to initialize Replicore engine', error: e);
+    appLogger.error('Failed to initialize Replicore engine', error: e);
     // Continue anyway — the app can still function offline
   }
 
   // ── 4. Setup Background Sync ───────────────────────────────────────────────
-  SyncService.instance.start(engine: engine);
+  SyncService.instance.start(engine: appEngine);
 
   runApp(TodoApp(
-    db: db,
-    engine: engine,
-    logger: logger,
-    metricsCollector: metricsCollector,
+    db: appDb,
+    engine: appEngine,
+    logger: appLogger,
+    metricsCollector: appMetricsCollector,
   ));
 }
 
