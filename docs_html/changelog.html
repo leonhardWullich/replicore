@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Changelog — Replicore Docs</title>
+<link rel="stylesheet" href="assets/style.css">
+<script src="assets/app.js"></script>
+</head>
+<body>
+<div class="topbar">
+  <button class="hamburger" onclick="toggleSidebar()">☰</button>
+  <div class="logo">Replicore <span>v0.5.1 Docs</span></div>
+  <div class="spacer"></div>
+  <button id="theme-btn" onclick="toggleDark()">🌙 Dark</button>
+</div>
+<div class="page">
+<nav class="sidebar"><div class="section-title">GETTING STARTED</div>
+<a href="index.html"><span class="icon">🏠</span>Home</a>
+<a href="getting-started.html"><span class="icon">🚀</span>Quick Start</a>
+<a href="architecture.html"><span class="icon">🏗️</span>Architecture</a>
+<div class="section-title">CORE CONCEPTS</div>
+<a href="sync-engine.html"><span class="icon">⚙️</span>Sync Engine</a>
+<a href="sync-conflicts.html"><span class="icon">🔀</span>Conflict Resolution</a>
+<a href="configuration.html"><span class="icon">🎛️</span>Configuration</a>
+<a href="error-handling.html"><span class="icon">🛡️</span>Error Handling</a>
+<a href="metrics-logging.html"><span class="icon">📊</span>Metrics & Logging</a>
+<div class="section-title">REMOTE BACKENDS</div>
+<a href="backend-supabase.html"><span class="icon">💜</span>Supabase</a>
+<a href="backend-firebase.html"><span class="icon">🔶</span>Firebase Firestore</a>
+<a href="backend-appwrite.html"><span class="icon">🌍</span>Appwrite</a>
+<a href="backend-graphql.html"><span class="icon">◼️</span>GraphQL</a>
+<div class="section-title">LOCAL STORAGE</div>
+<a href="storage-sqflite.html"><span class="icon">🗄️</span>SQLite (sqflite)</a>
+<a href="storage-drift.html"><span class="icon">🔐</span>Drift</a>
+<a href="storage-hive.html"><span class="icon">📦</span>Hive</a>
+<a href="storage-isar.html"><span class="icon">⚡</span>Isar</a>
+<div class="section-title">ADVANCED</div>
+<a href="orchestration.html"><span class="icon">🎭</span>Sync Orchestration</a>
+<a href="realtime.html"><span class="icon">📡</span>Real-Time Sync</a>
+<a href="widgets.html"><span class="icon">🎨</span>UI Widgets</a>
+<a href="multi-engine.html"><span class="icon">🔗</span>Multi-Engine</a>
+<a href="diagnostics.html"><span class="icon">🔍</span>Health & Diagnostics</a>
+<a href="testing.html"><span class="icon">🧪</span>Testing</a>
+<div class="section-title">REFERENCE</div>
+<a href="api-reference.html"><span class="icon">📖</span>API Reference</a>
+<a href="changelog.html" class="active"><span class="icon">📋</span>Changelog</a>
+</nav>
+<main class="content">
+<h1>Changelog</h1>
+<p style="opacity:.75;font-size:.9rem;margin-top:-.5rem">Version history</p><h2>v0.5.1</h2><ul><li>Added <code>syncTableByName(String)</code> to SyncEngine for convenience</li><li>Removed duplicate <code>HealthCheckResult</code>/<code>HealthStatus</code> from sync_manager.dart</li><li>Exported <code>sync_manager.dart</code> in barrel file</li><li>Replaced custom <code>pow()</code> with <code>dart:math</code> in realtime_subscription.dart</li><li>Fixed <code>RealtimeSubscriptionManager</code> to use <code>syncTableByName</code></li><li>Fixed <code>InMemoryMetricsCollector.recordTableMetrics()</code> double-counting bug</li><li>Fixed <code>SyncManager.syncEngine()</code> using wrong exception type</li><li>Removed unused <code>clock.dart</code></li><li>Fixed README widget API examples to match actual constructors</li></ul><h2>v0.5.0</h2><ul><li><strong>Batch Operations</strong> — 50-100× faster syncs via <code>batchUpsert</code>/<code>batchSoftDelete</code></li><li><strong>Sync Orchestration Strategies</strong> — 5 built-in strategies (Standard, OfflineFirst, StrictManual, Priority, Composite)</li><li><strong>Sealed Exception Hierarchy</strong> — <code>ReplicoreException</code> root with 7 specific subtypes</li><li><strong>Real-Time Subscriptions</strong> — All 4 backends (Supabase, Firebase, Appwrite, GraphQL)</li><li><strong>Multiple Storage Backends</strong> — SqfliteStore, DriftStore, HiveStore, IsarStore</li><li><strong>Multiple Remote Adapters</strong> — Supabase, Firebase Firestore, Appwrite, GraphQL</li><li><strong>SyncManager</strong> — Multi-engine coordination</li><li><strong>Diagnostics</strong> — HealthCheckResult, SystemHealth, DiagnosticsProviders</li><li><strong>UI Widgets</strong> — 6 ready-made Flutter widgets</li><li><strong>Metrics &amp; Logging</strong> — SyncMetrics, SyncSessionMetrics, structured LogEntry</li></ul><h2>v0.4.0</h2><ul><li>Supabase adapter with cursor-based pagination</li><li>Conflict resolution strategies (ServerWins, LocalWins, LastWriteWins, Custom)</li><li>Configurable retry with exponential backoff</li><li>SqfliteStore with sync column auto-migration</li></ul><div class="page-nav"><a href="api-reference.html"><div class="label">← Previous</div><div class="title">API Reference</div></a></div>
+<div class="footer">Replicore v0.5.1 — Enterprise Local-First Sync for Flutter &middot; MIT License</div>
+</main>
+</div>
+</body></html>

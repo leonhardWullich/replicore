@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>API Reference — Replicore Docs</title>
+<link rel="stylesheet" href="assets/style.css">
+<script src="assets/app.js"></script>
+</head>
+<body>
+<div class="topbar">
+  <button class="hamburger" onclick="toggleSidebar()">☰</button>
+  <div class="logo">Replicore <span>v0.5.1 Docs</span></div>
+  <div class="spacer"></div>
+  <button id="theme-btn" onclick="toggleDark()">🌙 Dark</button>
+</div>
+<div class="page">
+<nav class="sidebar"><div class="section-title">GETTING STARTED</div>
+<a href="index.html"><span class="icon">🏠</span>Home</a>
+<a href="getting-started.html"><span class="icon">🚀</span>Quick Start</a>
+<a href="architecture.html"><span class="icon">🏗️</span>Architecture</a>
+<div class="section-title">CORE CONCEPTS</div>
+<a href="sync-engine.html"><span class="icon">⚙️</span>Sync Engine</a>
+<a href="sync-conflicts.html"><span class="icon">🔀</span>Conflict Resolution</a>
+<a href="configuration.html"><span class="icon">🎛️</span>Configuration</a>
+<a href="error-handling.html"><span class="icon">🛡️</span>Error Handling</a>
+<a href="metrics-logging.html"><span class="icon">📊</span>Metrics & Logging</a>
+<div class="section-title">REMOTE BACKENDS</div>
+<a href="backend-supabase.html"><span class="icon">💜</span>Supabase</a>
+<a href="backend-firebase.html"><span class="icon">🔶</span>Firebase Firestore</a>
+<a href="backend-appwrite.html"><span class="icon">🌍</span>Appwrite</a>
+<a href="backend-graphql.html"><span class="icon">◼️</span>GraphQL</a>
+<div class="section-title">LOCAL STORAGE</div>
+<a href="storage-sqflite.html"><span class="icon">🗄️</span>SQLite (sqflite)</a>
+<a href="storage-drift.html"><span class="icon">🔐</span>Drift</a>
+<a href="storage-hive.html"><span class="icon">📦</span>Hive</a>
+<a href="storage-isar.html"><span class="icon">⚡</span>Isar</a>
+<div class="section-title">ADVANCED</div>
+<a href="orchestration.html"><span class="icon">🎭</span>Sync Orchestration</a>
+<a href="realtime.html"><span class="icon">📡</span>Real-Time Sync</a>
+<a href="widgets.html"><span class="icon">🎨</span>UI Widgets</a>
+<a href="multi-engine.html"><span class="icon">🔗</span>Multi-Engine</a>
+<a href="diagnostics.html"><span class="icon">🔍</span>Health & Diagnostics</a>
+<a href="testing.html"><span class="icon">🧪</span>Testing</a>
+<div class="section-title">REFERENCE</div>
+<a href="api-reference.html" class="active"><span class="icon">📖</span>API Reference</a>
+<a href="changelog.html"><span class="icon">📋</span>Changelog</a>
+</nav>
+<main class="content">
+<h1>API Reference</h1>
+<p style="opacity:.75;font-size:.9rem;margin-top:-.5rem">Complete class and method reference</p><p>Complete class and method reference for Replicore v0.5.1. Organized by module.</p><div class="toc"><h4>Modules</h4><ul><li><a href="#core">Core</a> — SyncEngine, ReplicoreConfig, TableConfig, Models</li><li><a href="#strategy">Strategy &amp; Conflict</a> — SyncStrategy, ConflictResolution, Orchestration</li><li><a href="#exceptions">Exceptions</a> — Sealed exception hierarchy</li><li><a href="#logging">Logging &amp; Metrics</a> — Logger, MetricsCollector, LogEntry</li><li><a href="#adapters">Remote Adapters</a> — Supabase, Firebase, Appwrite, GraphQL</li><li><a href="#storage">Local Stores</a> — Sqflite, Drift, Hive, Isar</li><li><a href="#realtime-ref">Real-Time</a> — Subscription config, providers, manager</li><li><a href="#widgets-ref">UI Widgets</a> — 6 Flutter widgets</li><li><a href="#manager">Multi-Engine</a> — SyncManager</li><li><a href="#diag">Diagnostics</a> — Health checks</li><li><a href="#utils">Utilities</a> — retry()</li></ul></div><h2 id="core">Core</h2><h3>SyncEngine</h3><pre><code class="language-dart">SyncEngine({
+  required LocalStore localStore,
+  required RemoteAdapter remoteAdapter,
+  ReplicoreConfig? config,
+  Logger? logger,
+  MetricsCollector? metricsCollector,
+})</code></pre><table><thead><tr><th>Method</th><th>Signature</th></tr></thead><tbody><tr><td>init</td><td><code>Future&lt;void&gt; init()</code></td></tr><tr><td>registerTable</td><td><code>SyncEngine registerTable(TableConfig config)</code></td></tr><tr><td>syncAll</td><td><code>Future&lt;SyncSessionMetrics&gt; syncAll()</code></td></tr><tr><td>syncTable</td><td><code>Future&lt;SyncMetrics&gt; syncTable(TableConfig config)</code></td></tr><tr><td>syncTableByName</td><td><code>Future&lt;SyncMetrics&gt; syncTableByName(String name)</code></td></tr><tr><td>syncWithOrchestration</td><td><code>Future&lt;SyncSessionMetrics&gt; syncWithOrchestration(SyncOrchestrationStrategy)</code></td></tr><tr><td>dispose</td><td><code>void dispose()</code></td></tr><tr><td>statusStream</td><td><code>Stream&lt;String&gt; get statusStream</code></td></tr></tbody></table><h3>ReplicoreConfig</h3><pre><code class="language-dart">const ReplicoreConfig({
+  int batchSize = 500,
+  int maxConcurrentSyncs = 1,
+  Duration operationTimeout = const Duration(seconds: 30),
+  int maxRetries = 3,
+  Duration initialRetryDelay = const Duration(milliseconds: 300),
+  Duration maxRetryDelay = const Duration(seconds: 30),
+  String isSyncedColumn = &#x27;is_synced&#x27;,
+  String operationIdColumn = &#x27;op_id&#x27;,
+  bool autoSyncOnStartup = false,
+  Duration? periodicSyncInterval,
+  bool enableDetailedLogging = false,
+  bool collectMetrics = true,
+  bool validateOnCreation = true,
+})
+
+factory ReplicoreConfig.production()
+factory ReplicoreConfig.development()
+factory ReplicoreConfig.testing()
+
+void validate()
+ReplicoreConfig copyWith({...})
+Map&lt;String, dynamic&gt; toJson()</code></pre><h3>TableConfig</h3><pre><code class="language-dart">const TableConfig({
+  required String name,
+  required List&lt;String&gt; columns,
+  String primaryKey = &#x27;id&#x27;,
+  String updatedAtColumn = &#x27;updated_at&#x27;,
+  String deletedAtColumn = &#x27;deleted_at&#x27;,
+  String isSyncedColumn = &#x27;is_synced&#x27;,
+  String operationIdColumn = &#x27;op_id&#x27;,
+  SyncStrategy strategy = SyncStrategy.serverWins,
+  ConflictResolver? customResolver,
+})
+
+void validate()</code></pre><h3>SyncCursor</h3><pre><code class="language-dart">const SyncCursor({required DateTime updatedAt, required dynamic primaryKey})
+factory SyncCursor.fromJson(Map&lt;String, dynamic&gt; json)
+Map&lt;String, dynamic&gt; toJson()</code></pre><h3>PullRequest / PullResult</h3><pre><code class="language-dart">const PullRequest({
+  required String table,
+  required List&lt;String&gt; columns,
+  required String primaryKey,
+  required String updatedAtColumn,
+  SyncCursor? cursor,
+  required int limit,
+})
+
+const PullResult({
+  required List&lt;Map&lt;String, dynamic&gt;&gt; records,
+  SyncCursor? nextCursor,
+})</code></pre><h2 id="strategy">Strategy &amp; Conflict Resolution</h2><h3>SyncStrategy</h3><p>Enum: <code>serverWins</code> · <code>localWins</code> · <code>lastWriteWins</code> · <code>custom</code></p><h3>ConflictResolution (sealed)</h3><table><thead><tr><th>Class</th><th>Constructor</th><th>Description</th></tr></thead><tbody><tr><td><code>UseLocal</code></td><td><code>const UseLocal()</code></td><td>Keep local record</td></tr><tr><td><code>UseRemote</code></td><td><code>const UseRemote(Map data)</code></td><td>Use remote record</td></tr><tr><td><code>UseMerged</code></td><td><code>const UseMerged(Map data)</code></td><td>Use merged record</td></tr></tbody></table><h3>ConflictResolver typedef</h3><pre><code class="language-dart">typedef ConflictResolver = Future&lt;ConflictResolution&gt; Function(
+  Map&lt;String, dynamic&gt; local,
+  Map&lt;String, dynamic&gt; remote,
+);</code></pre><h3>SyncOrchestrationStrategy (abstract)</h3><table><thead><tr><th>Method</th><th>Description</th></tr></thead><tbody><tr><td><code>execute(context)</code></td><td>Core sync logic — returns SyncSessionMetrics</td></tr><tr><td><code>beforeSync(context)</code></td><td>Lifecycle hook (default: no-op)</td></tr><tr><td><code>afterSync(context, metrics)</code></td><td>Lifecycle hook (default: no-op)</td></tr></tbody></table><p>Built-in: <code>StandardSyncOrchestration</code> · <code>OfflineFirstSyncOrchestration</code> · <code>StrictManualOrchestration</code> · <code>PrioritySyncOrchestration</code> · <code>CompositeSyncOrchestration</code></p><h2 id="exceptions">Exceptions</h2><table><thead><tr><th>Exception</th><th>Key Fields</th></tr></thead><tbody><tr><td><code>ReplicoreException</code> (sealed)</td><td>message, cause</td></tr><tr><td><code>SyncNetworkException</code></td><td>table, statusCode, isOffline</td></tr><tr><td><code>SyncAuthException</code></td><td>table</td></tr><tr><td><code>ConflictResolutionException</code></td><td>table, primaryKey</td></tr><tr><td><code>SchemaMigrationException</code></td><td>table, column</td></tr><tr><td><code>LocalStoreException</code></td><td>table</td></tr><tr><td><code>UnregisteredTableException</code></td><td>table</td></tr><tr><td><code>EngineConfigurationException</code></td><td>message</td></tr></tbody></table><h2 id="logging">Logging &amp; Metrics</h2><h3>Logger (abstract)</h3><table><thead><tr><th>Method</th><th>Signature</th></tr></thead><tbody><tr><td>debug</td><td><code>void debug(String msg, {Map? context})</code></td></tr><tr><td>info</td><td><code>void info(String msg, {Map? context})</code></td></tr><tr><td>warning</td><td><code>void warning(String msg, {Map? context, Object? error})</code></td></tr><tr><td>error</td><td><code>void error(String msg, {Object? error, StackTrace? st, Map? context})</code></td></tr><tr><td>critical</td><td><code>void critical(String msg, {Object? error, StackTrace? st})</code></td></tr><tr><td>log</td><td><code>void log(LogEntry entry)</code></td></tr></tbody></table><p>Implementations: <code>ConsoleLogger</code> · <code>NoOpLogger</code> · <code>MultiLogger</code></p><h3>LogLevel enum</h3><p><code>debug(0)</code> · <code>info(1)</code> · <code>warning(2)</code> · <code>error(3)</code> · <code>critical(4)</code></p><h3>MetricsCollector (abstract)</h3><table><thead><tr><th>Method</th><th>Signature</th></tr></thead><tbody><tr><td>recordTableMetrics</td><td><code>void recordTableMetrics(SyncMetrics)</code></td></tr><tr><td>recordSessionMetrics</td><td><code>void recordSessionMetrics(SyncSessionMetrics)</code></td></tr><tr><td>getLastSessionMetrics</td><td><code>SyncSessionMetrics? getLastSessionMetrics()</code></td></tr></tbody></table><p>Implementations: <code>InMemoryMetricsCollector</code> · <code>NoOpMetricsCollector</code></p><h2 id="adapters">Remote Adapters</h2><h3>RemoteAdapter (abstract)</h3><table><thead><tr><th>Method</th><th>Description</th></tr></thead><tbody><tr><td><code>pull(PullRequest)</code></td><td>Fetch remote records since cursor</td></tr><tr><td><code>upsert(table, data, idempotencyKey?)</code></td><td>Insert or update a single record</td></tr><tr><td><code>softDelete(table, pkColumn, id, payload, idempotencyKey?)</code></td><td>Soft-delete a record</td></tr><tr><td><code>batchUpsert(table, records, pkColumn, idempotencyKeys?)</code></td><td>Batch upsert (default: individual fallback)</td></tr><tr><td><code>batchSoftDelete(table, pkColumn, records, ...)</code></td><td>Batch soft-delete (default: individual fallback)</td></tr><tr><td><code>getRealtimeProvider()</code></td><td>Returns RealtimeSubscriptionProvider? (default: null)</td></tr></tbody></table><p>Implementations: <code>SupabaseAdapter</code> · <code>FirebaseFirestoreAdapter</code> · <code>AppwriteAdapter</code> · <code>GraphQLAdapter</code></p><h2 id="storage">Local Stores</h2><h3>LocalStore (abstract)</h3><table><thead><tr><th>Method</th><th>Description</th></tr></thead><tbody><tr><td><code>ensureSyncColumns(table, updatedAt, deletedAt)</code></td><td>Add is_synced/op_id columns if missing</td></tr><tr><td><code>readCursor(table)</code></td><td>Read last sync cursor</td></tr><tr><td><code>writeCursor(table, cursor)</code></td><td>Write sync cursor</td></tr><tr><td><code>clearCursor(table)</code></td><td>Clear sync cursor</td></tr><tr><td><code>queryDirty(table)</code></td><td>Get records with is_synced = 0</td></tr><tr><td><code>upsertBatch(table, records)</code></td><td>Batch insert/update records</td></tr><tr><td><code>markAsSynced(table, pkColumn, pk)</code></td><td>Set is_synced = 1</td></tr><tr><td><code>setOperationId(table, pkColumn, pk, opId)</code></td><td>Set op_id for idempotency</td></tr><tr><td><code>markManyAsSynced(table, pkColumn, pks)</code></td><td>Batch mark synced</td></tr><tr><td><code>setOperationIds(table, pkColumn, opIds)</code></td><td>Batch set op_ids</td></tr><tr><td><code>findById(table, pkColumn, id)</code></td><td>Lookup single record</td></tr><tr><td><code>findManyByIds(table, pkColumn, ids)</code></td><td>Lookup multiple records</td></tr></tbody></table><p>Implementations: <code>SqfliteStore</code> · <code>DriftStore</code> · <code>HiveStore</code> · <code>IsarStore</code></p><h2 id="realtime-ref">Real-Time</h2><h3>RealtimeSubscriptionProvider (abstract)</h3><table><thead><tr><th>Member</th><th>Signature</th></tr></thead><tbody><tr><td>subscribe</td><td><code>Stream&lt;RealtimeChangeEvent&gt; subscribe(String table)</code></td></tr><tr><td>isConnected</td><td><code>bool get isConnected</code></td></tr><tr><td>connectionStatusStream</td><td><code>Stream&lt;bool&gt; get connectionStatusStream</code></td></tr><tr><td>close</td><td><code>Future&lt;void&gt; close()</code></td></tr></tbody></table><p>Implementations: <code>SupabaseRealtimeProvider</code> · <code>FirebaseFirestoreRealtimeProvider</code> · <code>AppwriteRealtimeProvider</code> · <code>GraphQLRealtimeProvider</code></p><h3>RealtimeChangeEvent</h3><pre><code class="language-dart">const RealtimeChangeEvent({
+  required String table,
+  required RealtimeOperation operation,  // insert, update, delete
+  Map&lt;String, dynamic&gt;? record,
+  Map&lt;String, dynamic&gt; metadata = const {},
+  required DateTime timestamp,
+})</code></pre><h2 id="widgets-ref">UI Widgets</h2><p>See <a href="widgets.html">UI Widgets</a> page for full parameter tables.</p><table><thead><tr><th>Widget</th><th>Purpose</th></tr></thead><tbody><tr><td><code>SyncStatusWidget</code></td><td>Display sync status from statusStream</td></tr><tr><td><code>SyncMetricsCard</code></td><td>Metrics card showing pull/push/conflict stats</td></tr><tr><td><code>SyncErrorBanner</code></td><td>Context-aware error banner with retry/dismiss</td></tr><tr><td><code>OfflineIndicator</code></td><td>Online/offline chip</td></tr><tr><td><code>SyncButton</code></td><td>Sync button with loading state</td></tr><tr><td><code>SyncStatusPanel</code></td><td>All-in-one dashboard</td></tr></tbody></table><h2 id="manager">Multi-Engine</h2><p>See <a href="multi-engine.html">SyncManager</a> for full API.</p><h2 id="diag">Diagnostics</h2><p>See <a href="diagnostics.html">Health &amp; Diagnostics</a> for full API.</p><h2 id="utils">Utilities</h2><h3>retry&lt;T&gt;</h3><pre><code class="language-dart">Future&lt;T&gt; retry&lt;T&gt;(
+  Future&lt;T&gt; Function() action, {
+  int retries = 3,
+  Duration initialDelay = const Duration(milliseconds: 300),
+  Duration maxDelay = const Duration(seconds: 30),
+  Logger? logger,
+})</code></pre><p>Retries the given <code>action</code> with exponential backoff. Used internally by SyncEngine for all remote operations.</p><div class="page-nav"><a href="testing.html"><div class="label">← Previous</div><div class="title">Testing</div></a><a href="changelog.html" class="next"><div class="label">Next →</div><div class="title">Changelog</div></a></div>
+<div class="footer">Replicore v0.5.1 — Enterprise Local-First Sync for Flutter &middot; MIT License</div>
+</main>
+</div>
+</body></html>

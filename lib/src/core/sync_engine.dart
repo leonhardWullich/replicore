@@ -195,6 +195,25 @@ class SyncEngine {
     }
   }
 
+  /// Syncs a single table by name.
+  ///
+  /// Looks up the [TableConfig] from the registered tables and delegates
+  /// to [syncTable]. Throws [UnregisteredTableException] if the table
+  /// was not previously registered via [registerTable].
+  Future<SyncMetrics> syncTableByName(String tableName) async {
+    final config = _tables.cast<TableConfig?>().firstWhere(
+      (t) => t!.name == tableName,
+      orElse: () => null,
+    );
+    if (config == null) {
+      throw UnregisteredTableException(
+        'Table "$tableName" is not registered. '
+        'Call registerTable() first.',
+      );
+    }
+    return syncTable(config);
+  }
+
   /// Syncs using a custom strategy.
   ///
   /// Allows domain-specific sync logic beyond the standard pull-push pattern.

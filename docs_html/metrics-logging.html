@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Metrics & Logging — Replicore Docs</title>
+<link rel="stylesheet" href="assets/style.css">
+<script src="assets/app.js"></script>
+</head>
+<body>
+<div class="topbar">
+  <button class="hamburger" onclick="toggleSidebar()">☰</button>
+  <div class="logo">Replicore <span>v0.5.1 Docs</span></div>
+  <div class="spacer"></div>
+  <button id="theme-btn" onclick="toggleDark()">🌙 Dark</button>
+</div>
+<div class="page">
+<nav class="sidebar"><div class="section-title">GETTING STARTED</div>
+<a href="index.html"><span class="icon">🏠</span>Home</a>
+<a href="getting-started.html"><span class="icon">🚀</span>Quick Start</a>
+<a href="architecture.html"><span class="icon">🏗️</span>Architecture</a>
+<div class="section-title">CORE CONCEPTS</div>
+<a href="sync-engine.html"><span class="icon">⚙️</span>Sync Engine</a>
+<a href="sync-conflicts.html"><span class="icon">🔀</span>Conflict Resolution</a>
+<a href="configuration.html"><span class="icon">🎛️</span>Configuration</a>
+<a href="error-handling.html"><span class="icon">🛡️</span>Error Handling</a>
+<a href="metrics-logging.html" class="active"><span class="icon">📊</span>Metrics & Logging</a>
+<div class="section-title">REMOTE BACKENDS</div>
+<a href="backend-supabase.html"><span class="icon">💜</span>Supabase</a>
+<a href="backend-firebase.html"><span class="icon">🔶</span>Firebase Firestore</a>
+<a href="backend-appwrite.html"><span class="icon">🌍</span>Appwrite</a>
+<a href="backend-graphql.html"><span class="icon">◼️</span>GraphQL</a>
+<div class="section-title">LOCAL STORAGE</div>
+<a href="storage-sqflite.html"><span class="icon">🗄️</span>SQLite (sqflite)</a>
+<a href="storage-drift.html"><span class="icon">🔐</span>Drift</a>
+<a href="storage-hive.html"><span class="icon">📦</span>Hive</a>
+<a href="storage-isar.html"><span class="icon">⚡</span>Isar</a>
+<div class="section-title">ADVANCED</div>
+<a href="orchestration.html"><span class="icon">🎭</span>Sync Orchestration</a>
+<a href="realtime.html"><span class="icon">📡</span>Real-Time Sync</a>
+<a href="widgets.html"><span class="icon">🎨</span>UI Widgets</a>
+<a href="multi-engine.html"><span class="icon">🔗</span>Multi-Engine</a>
+<a href="diagnostics.html"><span class="icon">🔍</span>Health & Diagnostics</a>
+<a href="testing.html"><span class="icon">🧪</span>Testing</a>
+<div class="section-title">REFERENCE</div>
+<a href="api-reference.html"><span class="icon">📖</span>API Reference</a>
+<a href="changelog.html"><span class="icon">📋</span>Changelog</a>
+</nav>
+<main class="content">
+<h1>Metrics & Logging</h1>
+<p style="opacity:.75;font-size:.9rem;margin-top:-.5rem">Track performance and debug sync flows</p><h2>Sync Metrics</h2><p>Every <code>syncAll()</code> returns a <code>SyncSessionMetrics</code> containing per-table <code>SyncMetrics</code>.</p><h3>SyncSessionMetrics</h3><table><thead><tr><th>Property</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>totalDuration</code></td><td><code>Duration</code></td><td>Total wall time for the session</td></tr><tr><td><code>totalTablesSynced</code></td><td><code>int</code></td><td>Number of tables processed</td></tr><tr><td><code>totalRecordsPulled</code></td><td><code>int</code></td><td>Sum of all pulled records</td></tr><tr><td><code>totalRecordsPushed</code></td><td><code>int</code></td><td>Sum of all pushed records</td></tr><tr><td><code>totalConflicts</code></td><td><code>int</code></td><td>Sum of conflicts encountered</td></tr><tr><td><code>totalErrors</code></td><td><code>int</code></td><td>Number of failed table syncs</td></tr><tr><td><code>overallSuccess</code></td><td><code>bool</code></td><td><code>true</code> if all tables synced without errors</td></tr><tr><td><code>tableMetrics</code></td><td><code>List&lt;SyncMetrics&gt;</code></td><td>Per-table breakdown</td></tr></tbody></table><h3>SyncMetrics (per table)</h3><table><thead><tr><th>Property</th><th>Type</th></tr></thead><tbody><tr><td><code>tableName</code></td><td><code>String</code></td></tr><tr><td><code>duration</code></td><td><code>Duration</code></td></tr><tr><td><code>recordsPulled</code></td><td><code>int</code></td></tr><tr><td><code>recordsPushed</code></td><td><code>int</code></td></tr><tr><td><code>recordsWithConflicts</code></td><td><code>int</code></td></tr><tr><td><code>conflictsResolved</code></td><td><code>int</code></td></tr><tr><td><code>errors</code></td><td><code>int</code></td></tr><tr><td><code>success</code></td><td><code>bool</code></td></tr></tbody></table><h3>Usage</h3><pre><code class="language-dart">final metrics = await engine.syncAll();
+
+print(metrics);                        // pretty-printed summary
+print(metrics.toJson());               // structured JSON
+
+for (final tm in metrics.tableMetrics) {
+  if (!tm.success) {
+    print(&#x27;${tm.tableName} failed: ${tm.errorMessages}&#x27;);
+  }
+}</code></pre><h2>MetricsCollector</h2><table><thead><tr><th>Implementation</th><th>Behaviour</th></tr></thead><tbody><tr><td><code>InMemoryMetricsCollector</code></td><td>Stores all sessions and table metrics in memory. Useful for dashboards.</td></tr><tr><td><code>NoOpMetricsCollector</code></td><td>Discards all metrics. Zero overhead for production.</td></tr></tbody></table><h2>Logging</h2><p>Replicore provides a pluggable <code>Logger</code> interface with three built-in implementations.</p><h3>Logger Implementations</h3><table><thead><tr><th>Class</th><th>Behaviour</th></tr></thead><tbody><tr><td><code>ConsoleLogger</code></td><td>Prints to <code>stdout</code>. Accepts <code>minLevel</code> to filter.</td></tr><tr><td><code>NoOpLogger</code></td><td>Discards all log output. Zero overhead.</td></tr><tr><td><code>MultiLogger</code></td><td>Fan-out: delegates to a list of loggers.</td></tr></tbody></table><h3>Log Levels</h3><table><thead><tr><th>Level</th><th>Severity</th></tr></thead><tbody><tr><td><code>LogLevel.debug</code></td><td>0 — Verbose debugging</td></tr><tr><td><code>LogLevel.info</code></td><td>1 — Normal operations</td></tr><tr><td><code>LogLevel.warning</code></td><td>2 — Potential issues</td></tr><tr><td><code>LogLevel.error</code></td><td>3 — Errors requiring attention</td></tr><tr><td><code>LogLevel.critical</code></td><td>4 — Fatal errors</td></tr></tbody></table><h3>Custom Logger Integration</h3><pre><code class="language-dart">class SentryLogger implements Logger {
+  @override
+  void error(String msg, {Object? error, StackTrace? stackTrace, Map&lt;String, dynamic&gt;? context}) {
+    Sentry.captureException(error, stackTrace: stackTrace);
+  }
+  // ... implement other methods
+}
+
+final engine = SyncEngine(
+  localStore: store,
+  remoteAdapter: adapter,
+  logger: MultiLogger([ConsoleLogger(), SentryLogger()]),
+);</code></pre><h3>LogEntry</h3><p>Structured log entries can be serialized to JSON for export:</p><pre><code class="language-dart">final entry = LogEntry(
+  level: LogLevel.error,
+  message: &#x27;Sync failed&#x27;,
+  error: exception,
+  context: {&#x27;table&#x27;: &#x27;todos&#x27;, &#x27;records&#x27;: 42},
+);
+print(entry.toJson());</code></pre><div class="page-nav"><a href="error-handling.html"><div class="label">← Previous</div><div class="title">Error Handling</div></a><a href="backend-supabase.html" class="next"><div class="label">Next →</div><div class="title">Supabase</div></a></div>
+<div class="footer">Replicore v0.5.1 — Enterprise Local-First Sync for Flutter &middot; MIT License</div>
+</main>
+</div>
+</body></html>

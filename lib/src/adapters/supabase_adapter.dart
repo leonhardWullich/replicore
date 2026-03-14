@@ -1,5 +1,3 @@
-import 'package:supabase_flutter/supabase_flutter.dart';
-
 import '../core/exceptions.dart';
 import '../core/models.dart';
 import '../core/realtime_subscription.dart';
@@ -13,17 +11,45 @@ import 'supabase_realtime.dart';
 /// (a dedicated `_replicore_meta` SQLite table) instead of SharedPreferences.
 /// This ensures cursors survive "Clear Cache" actions and OS-level preference
 /// eviction, because the cursor lives in the same file as the data it tracks.
+///
+/// Example setup:
+/// ```dart
+/// import 'package:supabase_flutter/supabase_flutter.dart';
+///
+/// final adapter = SupabaseAdapter(
+///   client: Supabase.instance.client,
+///   localStore: sqfliteStore,
+///   postgresChangeEventAll: PostgresChangeEvent.all,
+///   isAuthException: (e) => e is AuthException,
+/// );
+/// ```
 class SupabaseAdapter implements RemoteAdapter {
-  final SupabaseClient client;
+  /// Supabase client instance. Accepts `dynamic` so that
+  /// `package:supabase_flutter` does not need to be a direct dependency
+  /// of Replicore.
+  final dynamic client;
+
   final String updatedAtColumn;
 
   /// The local store is used exclusively for cursor persistence.
   /// No application data is read or written here by the adapter.
   final LocalStore localStore;
 
+  /// The `PostgresChangeEvent.all` enum value from `package:supabase_flutter`,
+  /// passed through to [SupabaseRealtimeProvider].
+  final dynamic postgresChangeEventAll;
+
+  /// Optional predicate to identify authentication exceptions from Supabase.
+  /// When provided, matching exceptions are wrapped as [SyncAuthException].
+  ///
+  /// Example: `isAuthException: (e) => e is AuthException`
+  final bool Function(Object)? isAuthException;
+
   SupabaseAdapter({
     required this.client,
     required this.localStore,
+    required this.postgresChangeEventAll,
+    this.isAuthException,
     this.updatedAtColumn = 'updated_at',
   });
 
@@ -66,9 +92,10 @@ class SupabaseAdapter implements RemoteAdapter {
           .limit(request.limit);
 
       records = List<Map<String, dynamic>>.from(batchData);
-    } on AuthException catch (e) {
-      throw SyncAuthException(table: request.table, cause: e);
     } catch (e) {
+      if (isAuthException != null && isAuthException!(e)) {
+        throw SyncAuthException(table: request.table, cause: e);
+      }
       throw SyncNetworkException(
         table: request.table,
         message: 'Failed to pull data for table "${request.table}".',
@@ -116,9 +143,10 @@ class SupabaseAdapter implements RemoteAdapter {
   }) async {
     try {
       await client.from(table).upsert(data);
-    } on AuthException catch (e) {
-      throw SyncAuthException(table: table, cause: e);
     } catch (e) {
+      if (isAuthException != null && isAuthException!(e)) {
+        throw SyncAuthException(table: table, cause: e);
+      }
       throw SyncNetworkException(
         table: table,
         message: 'Upsert failed for table "$table".',
@@ -137,9 +165,10 @@ class SupabaseAdapter implements RemoteAdapter {
   }) async {
     try {
       await client.from(table).update(payload).eq(primaryKeyColumn, id);
-    } on AuthException catch (e) {
-      throw SyncAuthException(table: table, cause: e);
     } catch (e) {
+      if (isAuthException != null && isAuthException!(e)) {
+        throw SyncAuthException(table: table, cause: e);
+      }
       throw SyncNetworkException(
         table: table,
         message: 'Soft-delete failed for table "$table" (id: $id).',
@@ -166,9 +195,10 @@ class SupabaseAdapter implements RemoteAdapter {
           .map((r) => r[primaryKeyColumn])
           .where((id) => id != null)
           .toList();
-    } on AuthException catch (e) {
-      throw SyncAuthException(table: table, cause: e);
     } catch (e) {
+      if (isAuthException != null && isAuthException!(e)) {
+        throw SyncAuthException(table: table, cause: e);
+      }
       throw SyncNetworkException(
         table: table,
         message: 'Batch upsert failed for table "$table".',
@@ -208,9 +238,10 @@ class SupabaseAdapter implements RemoteAdapter {
           .map((r) => r[primaryKeyColumn])
           .where((id) => id != null)
           .toList();
-    } on AuthException catch (e) {
-      throw SyncAuthException(table: table, cause: e);
     } catch (e) {
+      if (isAuthException != null && isAuthException!(e)) {
+        throw SyncAuthException(table: table, cause: e);
+      }
       throw SyncNetworkException(
         table: table,
         message: 'Batch soft delete failed for table "$table".',
@@ -230,6 +261,9 @@ class SupabaseAdapter implements RemoteAdapter {
 
   @override
   RealtimeSubscriptionProvider? getRealtimeProvider() {
-    return SupabaseRealtimeProvider(client: client);
+    return SupabaseRealtimeProvider(
+      client: client,
+      postgresChangeEventAll: postgresChangeEventAll,
+    );
   }
 }

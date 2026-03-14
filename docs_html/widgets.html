@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>UI Widgets — Replicore Docs</title>
+<link rel="stylesheet" href="assets/style.css">
+<script src="assets/app.js"></script>
+</head>
+<body>
+<div class="topbar">
+  <button class="hamburger" onclick="toggleSidebar()">☰</button>
+  <div class="logo">Replicore <span>v0.5.1 Docs</span></div>
+  <div class="spacer"></div>
+  <button id="theme-btn" onclick="toggleDark()">🌙 Dark</button>
+</div>
+<div class="page">
+<nav class="sidebar"><div class="section-title">GETTING STARTED</div>
+<a href="index.html"><span class="icon">🏠</span>Home</a>
+<a href="getting-started.html"><span class="icon">🚀</span>Quick Start</a>
+<a href="architecture.html"><span class="icon">🏗️</span>Architecture</a>
+<div class="section-title">CORE CONCEPTS</div>
+<a href="sync-engine.html"><span class="icon">⚙️</span>Sync Engine</a>
+<a href="sync-conflicts.html"><span class="icon">🔀</span>Conflict Resolution</a>
+<a href="configuration.html"><span class="icon">🎛️</span>Configuration</a>
+<a href="error-handling.html"><span class="icon">🛡️</span>Error Handling</a>
+<a href="metrics-logging.html"><span class="icon">📊</span>Metrics & Logging</a>
+<div class="section-title">REMOTE BACKENDS</div>
+<a href="backend-supabase.html"><span class="icon">💜</span>Supabase</a>
+<a href="backend-firebase.html"><span class="icon">🔶</span>Firebase Firestore</a>
+<a href="backend-appwrite.html"><span class="icon">🌍</span>Appwrite</a>
+<a href="backend-graphql.html"><span class="icon">◼️</span>GraphQL</a>
+<div class="section-title">LOCAL STORAGE</div>
+<a href="storage-sqflite.html"><span class="icon">🗄️</span>SQLite (sqflite)</a>
+<a href="storage-drift.html"><span class="icon">🔐</span>Drift</a>
+<a href="storage-hive.html"><span class="icon">📦</span>Hive</a>
+<a href="storage-isar.html"><span class="icon">⚡</span>Isar</a>
+<div class="section-title">ADVANCED</div>
+<a href="orchestration.html"><span class="icon">🎭</span>Sync Orchestration</a>
+<a href="realtime.html"><span class="icon">📡</span>Real-Time Sync</a>
+<a href="widgets.html" class="active"><span class="icon">🎨</span>UI Widgets</a>
+<a href="multi-engine.html"><span class="icon">🔗</span>Multi-Engine</a>
+<a href="diagnostics.html"><span class="icon">🔍</span>Health & Diagnostics</a>
+<a href="testing.html"><span class="icon">🧪</span>Testing</a>
+<div class="section-title">REFERENCE</div>
+<a href="api-reference.html"><span class="icon">📖</span>API Reference</a>
+<a href="changelog.html"><span class="icon">📋</span>Changelog</a>
+</nav>
+<main class="content">
+<h1>UI Widgets</h1>
+<p style="opacity:.75;font-size:.9rem;margin-top:-.5rem">6 ready-made Flutter widgets for sync UX</p><p>Replicore ships 6 ready-made Flutter widgets for displaying sync status, errors, and metrics.</p><h2>SyncStatusWidget</h2><p>Displays sync status from the engine's <code>statusStream</code>.</p><pre><code class="language-dart">SyncStatusWidget(
+  statusStream: engine.statusStream,
+  onSync: () =&gt; engine.syncAll(),
+  showProgress: true,
+  builder: (context, status) =&gt; Text(status),  // optional custom builder
+)</code></pre><table><thead><tr><th>Prop</th><th>Type</th><th>Default</th><th>Description</th></tr></thead><tbody><tr><td><code>statusStream</code></td><td><code>Stream&lt;String&gt;</code></td><td>required</td><td>Status messages from engine</td></tr><tr><td><code>onSync</code></td><td><code>VoidCallback</code></td><td>required</td><td>Sync trigger callback</td></tr><tr><td><code>builder</code></td><td><code>Widget Function(…)?</code></td><td>null</td><td>Custom builder, overrides default UI</td></tr><tr><td><code>showProgress</code></td><td><code>bool</code></td><td>true</td><td>Show spinner during sync</td></tr><tr><td><code>textColor</code></td><td><code>Color?</code></td><td>null</td><td>Override text color</td></tr></tbody></table><h2>SyncMetricsCard</h2><p>Shows sync performance metrics in a card layout.</p><pre><code class="language-dart">SyncMetricsCard(
+  metrics: sessionMetrics,
+  elevation: 2,
+  backgroundColor: Colors.white,
+)</code></pre><table><thead><tr><th>Prop</th><th>Type</th><th>Default</th></tr></thead><tbody><tr><td><code>metrics</code></td><td><code>SyncSessionMetrics</code></td><td>required</td></tr><tr><td><code>elevation</code></td><td><code>double</code></td><td>1</td></tr><tr><td><code>backgroundColor</code></td><td><code>Color?</code></td><td>null</td></tr><tr><td><code>showWhenEmpty</code></td><td><code>bool</code></td><td>true</td></tr></tbody></table><h2>SyncErrorBanner</h2><p>Context-aware error banner using Dart 3 pattern matching on the sealed <code>ReplicoreException</code> hierarchy.</p><pre><code class="language-dart">SyncErrorBanner(
+  error: currentError,   // ReplicoreException?
+  onRetry: () =&gt; engine.syncAll(),
+  onDismiss: () =&gt; setState(() =&gt; currentError = null),
+  customMessage: null,   // optional override text
+)</code></pre><table><thead><tr><th>Prop</th><th>Type</th><th>Default</th></tr></thead><tbody><tr><td><code>error</code></td><td><code>ReplicoreException?</code></td><td>required</td></tr><tr><td><code>onRetry</code></td><td><code>VoidCallback?</code></td><td>null</td></tr><tr><td><code>onDismiss</code></td><td><code>VoidCallback?</code></td><td>null</td></tr><tr><td><code>customMessage</code></td><td><code>String?</code></td><td>null</td></tr></tbody></table><p>When <code>error</code> is <code>null</code>, the banner is hidden (renders <code>SizedBox.shrink()</code>).</p><h2>OfflineIndicator</h2><p>Small chip showing online/offline state.</p><pre><code class="language-dart">OfflineIndicator(
+  isOnline: connectivityStatus,
+  offlineIcon: Icons.cloud_off,
+  onlineIcon: Icons.cloud_done,
+  offlineLabel: &#x27;Offline&#x27;,
+)</code></pre><h2>SyncButton</h2><p>A <code>FilledButton.icon</code> that auto-disables and shows a spinner while syncing.</p><pre><code class="language-dart">SyncButton(
+  onPressed: () =&gt; engine.syncAll(),
+  isSyncing: isSyncInProgress,
+  label: &#x27;Sync Now&#x27;,
+  icon: Icons.sync,
+)</code></pre><table><thead><tr><th>Prop</th><th>Type</th><th>Default</th></tr></thead><tbody><tr><td><code>onPressed</code></td><td><code>VoidCallback</code></td><td>required</td></tr><tr><td><code>isSyncing</code></td><td><code>bool</code></td><td>required</td></tr><tr><td><code>label</code></td><td><code>String</code></td><td>'Sync'</td></tr><tr><td><code>icon</code></td><td><code>IconData</code></td><td>Icons.sync</td></tr></tbody></table><h2>SyncStatusPanel</h2><p>All-in-one dashboard combining status, metrics, errors, and sync button.</p><pre><code class="language-dart">SyncStatusPanel(
+  statusStream: engine.statusStream,
+  onSync: () =&gt; engine.syncAll(),
+  metrics: lastSessionMetrics,
+  error: currentError,
+  onErrorDismiss: () =&gt; setState(() =&gt; currentError = null),
+  showMetrics: true,
+  showButton: true,
+  showStatus: true,
+)</code></pre><table><thead><tr><th>Prop</th><th>Type</th><th>Default</th></tr></thead><tbody><tr><td><code>statusStream</code></td><td><code>Stream&lt;String&gt;</code></td><td>required</td></tr><tr><td><code>onSync</code></td><td><code>VoidCallback</code></td><td>required</td></tr><tr><td><code>metrics</code></td><td><code>SyncSessionMetrics?</code></td><td>null</td></tr><tr><td><code>error</code></td><td><code>ReplicoreException?</code></td><td>null</td></tr><tr><td><code>onErrorDismiss</code></td><td><code>VoidCallback?</code></td><td>null</td></tr><tr><td><code>showMetrics</code></td><td><code>bool</code></td><td>true</td></tr><tr><td><code>showButton</code></td><td><code>bool</code></td><td>true</td></tr><tr><td><code>showStatus</code></td><td><code>bool</code></td><td>true</td></tr></tbody></table><div class="page-nav"><a href="realtime.html"><div class="label">← Previous</div><div class="title">Real-Time Sync</div></a><a href="multi-engine.html" class="next"><div class="label">Next →</div><div class="title">Multi-Engine</div></a></div>
+<div class="footer">Replicore v0.5.1 — Enterprise Local-First Sync for Flutter &middot; MIT License</div>
+</main>
+</div>
+</body></html>

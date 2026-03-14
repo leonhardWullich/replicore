@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Error Handling — Replicore Docs</title>
+<link rel="stylesheet" href="assets/style.css">
+<script src="assets/app.js"></script>
+</head>
+<body>
+<div class="topbar">
+  <button class="hamburger" onclick="toggleSidebar()">☰</button>
+  <div class="logo">Replicore <span>v0.5.1 Docs</span></div>
+  <div class="spacer"></div>
+  <button id="theme-btn" onclick="toggleDark()">🌙 Dark</button>
+</div>
+<div class="page">
+<nav class="sidebar"><div class="section-title">GETTING STARTED</div>
+<a href="index.html"><span class="icon">🏠</span>Home</a>
+<a href="getting-started.html"><span class="icon">🚀</span>Quick Start</a>
+<a href="architecture.html"><span class="icon">🏗️</span>Architecture</a>
+<div class="section-title">CORE CONCEPTS</div>
+<a href="sync-engine.html"><span class="icon">⚙️</span>Sync Engine</a>
+<a href="sync-conflicts.html"><span class="icon">🔀</span>Conflict Resolution</a>
+<a href="configuration.html"><span class="icon">🎛️</span>Configuration</a>
+<a href="error-handling.html" class="active"><span class="icon">🛡️</span>Error Handling</a>
+<a href="metrics-logging.html"><span class="icon">📊</span>Metrics & Logging</a>
+<div class="section-title">REMOTE BACKENDS</div>
+<a href="backend-supabase.html"><span class="icon">💜</span>Supabase</a>
+<a href="backend-firebase.html"><span class="icon">🔶</span>Firebase Firestore</a>
+<a href="backend-appwrite.html"><span class="icon">🌍</span>Appwrite</a>
+<a href="backend-graphql.html"><span class="icon">◼️</span>GraphQL</a>
+<div class="section-title">LOCAL STORAGE</div>
+<a href="storage-sqflite.html"><span class="icon">🗄️</span>SQLite (sqflite)</a>
+<a href="storage-drift.html"><span class="icon">🔐</span>Drift</a>
+<a href="storage-hive.html"><span class="icon">📦</span>Hive</a>
+<a href="storage-isar.html"><span class="icon">⚡</span>Isar</a>
+<div class="section-title">ADVANCED</div>
+<a href="orchestration.html"><span class="icon">🎭</span>Sync Orchestration</a>
+<a href="realtime.html"><span class="icon">📡</span>Real-Time Sync</a>
+<a href="widgets.html"><span class="icon">🎨</span>UI Widgets</a>
+<a href="multi-engine.html"><span class="icon">🔗</span>Multi-Engine</a>
+<a href="diagnostics.html"><span class="icon">🔍</span>Health & Diagnostics</a>
+<a href="testing.html"><span class="icon">🧪</span>Testing</a>
+<div class="section-title">REFERENCE</div>
+<a href="api-reference.html"><span class="icon">📖</span>API Reference</a>
+<a href="changelog.html"><span class="icon">📋</span>Changelog</a>
+</nav>
+<main class="content">
+<h1>Error Handling</h1>
+<p style="opacity:.75;font-size:.9rem;margin-top:-.5rem">Sealed exception hierarchy</p><p>Replicore uses a <strong>sealed exception hierarchy</strong> rooted at <code>ReplicoreException</code>. You can pattern-match on specific types for granular error handling.</p><h2>Exception Hierarchy</h2><pre><code>ReplicoreException  (sealed)
+  ├── SyncNetworkException       — network / timeout / server error
+  ├── SyncAuthException          — 401/403, session expired
+  ├── ConflictResolutionException — custom resolver threw
+  ├── SchemaMigrationException   — ALTER TABLE failed
+  ├── LocalStoreException        — local DB read/write error
+  ├── UnregisteredTableException — table not registered
+  └── EngineConfigurationException — invalid config</code></pre><h2>Pattern Matching</h2><pre><code class="language-dart">try {
+  await engine.syncAll();
+} on SyncNetworkException catch (e) {
+  if (e.isOffline) showOfflineBanner();
+  else showError(&#x27;Server error: ${e.statusCode}&#x27;);
+} on SyncAuthException catch (e) {
+  redirectToLogin();
+} on ConflictResolutionException catch (e) {
+  log(&#x27;Conflict on ${e.table} pk=${e.primaryKey}&#x27;);
+} on SchemaMigrationException catch (e) {
+  reportFatalError(e);
+} on LocalStoreException catch (e) {
+  showError(&#x27;Database error: ${e.message}&#x27;);
+} on ReplicoreException catch (e) {
+  // catch-all for any Replicore error
+  showError(&#x27;Sync error: ${e.message}&#x27;);
+}</code></pre><h2>Exception Details</h2><h3>SyncNetworkException</h3><table><thead><tr><th>Field</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>table</code></td><td><code>String</code></td><td>The table being synced</td></tr><tr><td><code>statusCode</code></td><td><code>int?</code></td><td>HTTP status code, <code>null</code> if offline</td></tr><tr><td><code>isOffline</code></td><td><code>bool</code></td><td>Getter — <code>true</code> when statusCode is null</td></tr><tr><td><code>cause</code></td><td><code>Object?</code></td><td>Original underlying exception</td></tr></tbody></table><h3>SyncAuthException</h3><table><thead><tr><th>Field</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>table</code></td><td><code>String</code></td><td>The table being synced</td></tr><tr><td><code>message</code></td><td><code>String</code></td><td>Default: 'Unauthorized. Session may have expired.'</td></tr></tbody></table><h3>ConflictResolutionException</h3><table><thead><tr><th>Field</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>table</code></td><td><code>String</code></td><td>Table where conflict occurred</td></tr><tr><td><code>primaryKey</code></td><td><code>dynamic</code></td><td>Primary key of the conflicting record</td></tr><tr><td><code>cause</code></td><td><code>Object?</code></td><td>The error thrown by the custom resolver</td></tr></tbody></table><h3>SchemaMigrationException</h3><table><thead><tr><th>Field</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>table</code></td><td><code>String</code></td><td>Table being migrated</td></tr><tr><td><code>column</code></td><td><code>String</code></td><td>Column that failed to add</td></tr></tbody></table><h3>LocalStoreException</h3><table><thead><tr><th>Field</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>table</code></td><td><code>String</code></td><td>Table with the local DB error</td></tr><tr><td><code>message</code></td><td><code>String</code></td><td>Error description</td></tr></tbody></table><h3>UnregisteredTableException</h3><p>Thrown when you attempt to sync a table that hasn't been registered via <code>registerTable()</code>.</p><h3>EngineConfigurationException</h3><p>Thrown at setup time, e.g. using <code>SyncStrategy.custom</code> without a <code>customResolver</code>, or invalid config values.</p><div class="callout callout-info"><span class="icon">ℹ️</span><div>All exceptions include a <code>cause</code> field for chaining the original underlying error.</div></div><div class="page-nav"><a href="configuration.html"><div class="label">← Previous</div><div class="title">Configuration</div></a><a href="metrics-logging.html" class="next"><div class="label">Next →</div><div class="title">Metrics & Logging</div></a></div>
+<div class="footer">Replicore v0.5.1 — Enterprise Local-First Sync for Flutter &middot; MIT License</div>
+</main>
+</div>
+</body></html>

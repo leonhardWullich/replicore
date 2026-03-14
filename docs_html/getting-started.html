@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Quick Start — Replicore Docs</title>
+<link rel="stylesheet" href="assets/style.css">
+<script src="assets/app.js"></script>
+</head>
+<body>
+<div class="topbar">
+  <button class="hamburger" onclick="toggleSidebar()">☰</button>
+  <div class="logo">Replicore <span>v0.5.1 Docs</span></div>
+  <div class="spacer"></div>
+  <button id="theme-btn" onclick="toggleDark()">🌙 Dark</button>
+</div>
+<div class="page">
+<nav class="sidebar"><div class="section-title">GETTING STARTED</div>
+<a href="index.html"><span class="icon">🏠</span>Home</a>
+<a href="getting-started.html" class="active"><span class="icon">🚀</span>Quick Start</a>
+<a href="architecture.html"><span class="icon">🏗️</span>Architecture</a>
+<div class="section-title">CORE CONCEPTS</div>
+<a href="sync-engine.html"><span class="icon">⚙️</span>Sync Engine</a>
+<a href="sync-conflicts.html"><span class="icon">🔀</span>Conflict Resolution</a>
+<a href="configuration.html"><span class="icon">🎛️</span>Configuration</a>
+<a href="error-handling.html"><span class="icon">🛡️</span>Error Handling</a>
+<a href="metrics-logging.html"><span class="icon">📊</span>Metrics & Logging</a>
+<div class="section-title">REMOTE BACKENDS</div>
+<a href="backend-supabase.html"><span class="icon">💜</span>Supabase</a>
+<a href="backend-firebase.html"><span class="icon">🔶</span>Firebase Firestore</a>
+<a href="backend-appwrite.html"><span class="icon">🌍</span>Appwrite</a>
+<a href="backend-graphql.html"><span class="icon">◼️</span>GraphQL</a>
+<div class="section-title">LOCAL STORAGE</div>
+<a href="storage-sqflite.html"><span class="icon">🗄️</span>SQLite (sqflite)</a>
+<a href="storage-drift.html"><span class="icon">🔐</span>Drift</a>
+<a href="storage-hive.html"><span class="icon">📦</span>Hive</a>
+<a href="storage-isar.html"><span class="icon">⚡</span>Isar</a>
+<div class="section-title">ADVANCED</div>
+<a href="orchestration.html"><span class="icon">🎭</span>Sync Orchestration</a>
+<a href="realtime.html"><span class="icon">📡</span>Real-Time Sync</a>
+<a href="widgets.html"><span class="icon">🎨</span>UI Widgets</a>
+<a href="multi-engine.html"><span class="icon">🔗</span>Multi-Engine</a>
+<a href="diagnostics.html"><span class="icon">🔍</span>Health & Diagnostics</a>
+<a href="testing.html"><span class="icon">🧪</span>Testing</a>
+<div class="section-title">REFERENCE</div>
+<a href="api-reference.html"><span class="icon">📖</span>API Reference</a>
+<a href="changelog.html"><span class="icon">📋</span>Changelog</a>
+</nav>
+<main class="content">
+<h1>Quick Start</h1>
+<p style="opacity:.75;font-size:.9rem;margin-top:-.5rem">Your first offline-first sync in 5 minutes</p><p>Get your first offline-first sync running in under 5 minutes.</p><div class="toc"><h4>On this page</h4><ul><li><a href="#install">1. Installation</a></li><li><a href="#setup-db">2. Set Up Local Database</a></li><li><a href="#create-engine">3. Create Sync Engine</a></li><li><a href="#register">4. Register Tables</a></li><li><a href="#sync">5. Sync</a></li><li><a href="#whats-next">What's Next</a></li></ul></div><h2 id="install">1. Installation</h2><pre><code class="language-bash">flutter pub add replicore</code></pre><p>Or add manually to <code>pubspec.yaml</code>:</p><pre><code class="language-yaml">dependencies:
+  replicore: ^0.5.1
+  sqflite: ^2.4.2            # local store (user dependency)
+  supabase_flutter: ^2.12.0  # remote backend (user dependency)</code></pre><div class="callout callout-info"><span class="icon">ℹ️</span><div>Replicore has <strong>zero third-party dependencies</strong>. All backend packages (Supabase, Firebase, Appwrite, GraphQL) and local stores (sqflite, Drift, Hive, Isar) are optional — add only the ones you actually use to your own <code>pubspec.yaml</code>.</div></div><h2 id="setup-db">2. Set Up Local Database</h2><pre><code class="language-dart">import &#x27;package:sqflite/sqflite.dart&#x27;;
+import &#x27;package:path/path.dart&#x27;;
+
+final db = await openDatabase(
+  join(await getDatabasesPath(), &#x27;myapp.db&#x27;),
+  version: 1,
+  onCreate: (db, version) async {
+    await db.execute(
+      &#x27;CREATE TABLE todos (&#x27;
+      &#x27;  id TEXT PRIMARY KEY,&#x27;
+      &#x27;  title TEXT NOT NULL,&#x27;
+      &#x27;  completed INTEGER DEFAULT 0,&#x27;
+      &#x27;  updated_at TEXT,&#x27;
+      &#x27;  deleted_at TEXT&#x27;
+      &#x27;)&#x27;
+    );
+  },
+);</code></pre><div class="callout callout-info"><span class="icon">ℹ️</span><div>Replicore automatically adds <code>is_synced</code> and <code>op_id</code> columns via <code>ensureSyncColumns()</code> during <code>engine.init()</code>. You do not need to create them manually.</div></div><h2 id="create-engine">3. Create the Sync Engine</h2><pre><code class="language-dart">import &#x27;package:replicore/replicore.dart&#x27;;
+import &#x27;package:sqflite/sqflite.dart&#x27;;
+import &#x27;package:supabase_flutter/supabase_flutter.dart&#x27;;
+
+final localStore = SqfliteStore(db, conflictAlgorithm: ConflictAlgorithm.replace);
+
+final remoteAdapter = SupabaseAdapter(
+  client: Supabase.instance.client,
+  localStore: localStore,
+  postgresChangeEventAll: PostgresChangeEvent.all,
+  isAuthException: (e) =&gt; e is AuthException,
+);
+
+final engine = SyncEngine(
+  localStore:       localStore,
+  remoteAdapter:    remoteAdapter,
+  config:           ReplicoreConfig.production(),
+  logger:           ConsoleLogger(minLevel: LogLevel.info),
+  metricsCollector: InMemoryMetricsCollector(),
+);</code></pre><h2 id="register">4. Register Tables</h2><pre><code class="language-dart">engine
+  .registerTable(TableConfig(
+    name: &#x27;todos&#x27;,
+    columns: [&#x27;id&#x27;, &#x27;title&#x27;, &#x27;completed&#x27;, &#x27;updated_at&#x27;, &#x27;deleted_at&#x27;],
+    strategy: SyncStrategy.lastWriteWins,
+  ))
+  .registerTable(TableConfig(
+    name: &#x27;projects&#x27;,
+    columns: [&#x27;id&#x27;, &#x27;name&#x27;, &#x27;updated_at&#x27;, &#x27;deleted_at&#x27;],
+    strategy: SyncStrategy.serverWins,
+  ));</code></pre><div class="callout callout-warn"><span class="icon">⚠️</span><div><code>registerTable()</code> must be called <strong>before</strong> <code>engine.init()</code>. The method returns the engine so you can chain calls.</div></div><h2 id="sync">5. Sync!</h2><pre><code class="language-dart">await engine.init();                    // idempotent — safe to call multiple times
+final metrics = await engine.syncAll(); // pull + push all registered tables
+
+print(&#x27;Success: ${metrics.overallSuccess}&#x27;);
+print(&#x27;Pulled:  ${metrics.totalRecordsPulled}&#x27;);
+print(&#x27;Pushed:  ${metrics.totalRecordsPushed}&#x27;);</code></pre><h2 id="whats-next">What's Next</h2><ul><li><a href="architecture.html">Architecture Overview</a> — understand the data flow</li><li><a href="sync-conflicts.html">Conflict Resolution</a> — pick the right strategy</li><li><a href="configuration.html">Configuration</a> — tune batch size, retries, timeouts</li><li><a href="widgets.html">UI Widgets</a> — drop-in sync status &amp; error widgets</li></ul><div class="page-nav"><a href="index.html"><div class="label">← Previous</div><div class="title">Home</div></a><a href="architecture.html" class="next"><div class="label">Next →</div><div class="title">Architecture</div></a></div>
+<div class="footer">Replicore v0.5.1 — Enterprise Local-First Sync for Flutter &middot; MIT License</div>
+</main>
+</div>
+</body></html>

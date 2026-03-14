@@ -135,11 +135,12 @@ abstract class MetricsCollector {
 /// Default in-memory metrics collector.
 class InMemoryMetricsCollector implements MetricsCollector {
   final List<SyncSessionMetrics> _sessions = [];
+  final List<SyncMetrics> _tableMetrics = [];
   SyncSessionMetrics? _currentSession;
 
   @override
   void recordTableMetrics(SyncMetrics metrics) {
-    _currentSession?.addTableMetrics(metrics);
+    _tableMetrics.add(metrics);
   }
 
   @override
@@ -151,10 +152,14 @@ class InMemoryMetricsCollector implements MetricsCollector {
   @override
   SyncSessionMetrics? getLastSessionMetrics() => _currentSession;
 
-  List<SyncSessionMetrics> getAllSessions() => _sessions;
+  /// Returns all individually recorded table metrics.
+  List<SyncMetrics> getAllTableMetrics() => List.unmodifiable(_tableMetrics);
+
+  List<SyncSessionMetrics> getAllSessions() => List.unmodifiable(_sessions);
 
   void clear() {
     _sessions.clear();
+    _tableMetrics.clear();
     _currentSession = null;
   }
 }

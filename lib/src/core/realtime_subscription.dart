@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'logger.dart';
 import 'sync_engine.dart';
@@ -241,7 +242,7 @@ class RealtimeSubscriptionManager {
   Future<void> _performDebouncedSync() async {
     if (_pendingTables.isEmpty) return;
 
-    final tablesToSync = Set.from(_pendingTables);
+    final tablesToSync = Set<String>.from(_pendingTables);
     _pendingTables.clear();
 
     logger.info('Syncing real-time changes in ${tablesToSync.length} table(s)');
@@ -251,7 +252,7 @@ class RealtimeSubscriptionManager {
       for (final table in tablesToSync) {
         try {
           logger.debug('Syncing table "$table" due to real-time change');
-          await engine.syncTable(table);
+          await engine.syncTableByName(table);
         } catch (e) {
           logger.debug('Failed to sync table "$table": $e');
         }
@@ -272,7 +273,7 @@ class RealtimeSubscriptionManager {
 
     // Calculate exponential backoff delay
     final delayMs =
-        (1000 * pow(config.backoffMultiplier, _reconnectAttempts.toDouble()))
+        (1000 * math.pow(config.backoffMultiplier, _reconnectAttempts))
             .toInt()
             .clamp(1000, 300000);
 
@@ -342,13 +343,4 @@ class RealtimeSubscriptionManager {
 
     logger.info('Real-time subscription manager closed.');
   }
-}
-
-// Need pow for exponentiation
-double pow(double base, double exponent) {
-  var result = 1.0;
-  for (var i = 0; i < exponent.toInt(); i++) {
-    result *= base;
-  }
-  return result;
 }

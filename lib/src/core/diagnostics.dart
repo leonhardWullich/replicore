@@ -1,5 +1,3 @@
-import 'package:sqflite/sqflite.dart';
-
 /// Represents the health status of a component.
 enum HealthStatus { healthy, degraded, unhealthy }
 
@@ -87,8 +85,17 @@ abstract class DiagnosticsProvider {
 }
 
 /// Local database diagnostics.
+///
+/// Example setup:
+/// ```dart
+/// import 'package:sqflite/sqflite.dart';
+///
+/// final diagnostics = DatabaseDiagnosticsProvider(database);
+/// ```
 class DatabaseDiagnosticsProvider implements DiagnosticsProvider {
-  final Database database;
+  /// The sqflite [Database] instance. Accepts `dynamic` so that
+  /// `package:sqflite` does not need to be a direct dependency of Replicore.
+  final dynamic database;
 
   DatabaseDiagnosticsProvider(this.database);
 

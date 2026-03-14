@@ -40,12 +40,15 @@ Future<void> main() async {
   // ── 3. Initialize Replicore ────────────────────────────────────────────────
 
   // Create local store (handles both data and sync cursors)
-  final localStore = SqfliteStore(db);
+  final localStore =
+      SqfliteStore(db, conflictAlgorithm: ConflictAlgorithm.replace);
 
   // Create remote adapter for Supabase
   final remoteAdapter = SupabaseAdapter(
     client: Supabase.instance.client,
     localStore: localStore,
+    postgresChangeEventAll: PostgresChangeEvent.all,
+    isAuthException: (e) => e is AuthException,
   );
 
   // Create logger (console output for development)

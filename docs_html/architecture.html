@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Architecture — Replicore Docs</title>
+<link rel="stylesheet" href="assets/style.css">
+<script src="assets/app.js"></script>
+</head>
+<body>
+<div class="topbar">
+  <button class="hamburger" onclick="toggleSidebar()">☰</button>
+  <div class="logo">Replicore <span>v0.5.1 Docs</span></div>
+  <div class="spacer"></div>
+  <button id="theme-btn" onclick="toggleDark()">🌙 Dark</button>
+</div>
+<div class="page">
+<nav class="sidebar"><div class="section-title">GETTING STARTED</div>
+<a href="index.html"><span class="icon">🏠</span>Home</a>
+<a href="getting-started.html"><span class="icon">🚀</span>Quick Start</a>
+<a href="architecture.html" class="active"><span class="icon">🏗️</span>Architecture</a>
+<div class="section-title">CORE CONCEPTS</div>
+<a href="sync-engine.html"><span class="icon">⚙️</span>Sync Engine</a>
+<a href="sync-conflicts.html"><span class="icon">🔀</span>Conflict Resolution</a>
+<a href="configuration.html"><span class="icon">🎛️</span>Configuration</a>
+<a href="error-handling.html"><span class="icon">🛡️</span>Error Handling</a>
+<a href="metrics-logging.html"><span class="icon">📊</span>Metrics & Logging</a>
+<div class="section-title">REMOTE BACKENDS</div>
+<a href="backend-supabase.html"><span class="icon">💜</span>Supabase</a>
+<a href="backend-firebase.html"><span class="icon">🔶</span>Firebase Firestore</a>
+<a href="backend-appwrite.html"><span class="icon">🌍</span>Appwrite</a>
+<a href="backend-graphql.html"><span class="icon">◼️</span>GraphQL</a>
+<div class="section-title">LOCAL STORAGE</div>
+<a href="storage-sqflite.html"><span class="icon">🗄️</span>SQLite (sqflite)</a>
+<a href="storage-drift.html"><span class="icon">🔐</span>Drift</a>
+<a href="storage-hive.html"><span class="icon">📦</span>Hive</a>
+<a href="storage-isar.html"><span class="icon">⚡</span>Isar</a>
+<div class="section-title">ADVANCED</div>
+<a href="orchestration.html"><span class="icon">🎭</span>Sync Orchestration</a>
+<a href="realtime.html"><span class="icon">📡</span>Real-Time Sync</a>
+<a href="widgets.html"><span class="icon">🎨</span>UI Widgets</a>
+<a href="multi-engine.html"><span class="icon">🔗</span>Multi-Engine</a>
+<a href="diagnostics.html"><span class="icon">🔍</span>Health & Diagnostics</a>
+<a href="testing.html"><span class="icon">🧪</span>Testing</a>
+<div class="section-title">REFERENCE</div>
+<a href="api-reference.html"><span class="icon">📖</span>API Reference</a>
+<a href="changelog.html"><span class="icon">📋</span>Changelog</a>
+</nav>
+<main class="content">
+<h1>Architecture</h1>
+<p style="opacity:.75;font-size:.9rem;margin-top:-.5rem">How Replicore is structured</p><p>Replicore follows a clean, layered architecture with dependency injection throughout.</p><h2>High-Level Data Flow</h2><pre><code>┌─────────────────────────────────────────────────────────┐
+│                     Your Flutter App                     │
+│  ┌──────────────┐  ┌──────────────┐  ┌───────────────┐  │
+│  │ UI Widgets   │  │  Your Code   │  │  State Mgmt   │  │
+│  └──────┬───────┘  └──────┬───────┘  └───────┬───────┘  │
+│         └─────────────────┼──────────────────┘           │
+│                           ▼                              │
+│  ┌─────────────────── SyncEngine ───────────────────┐    │
+│  │  registerTable() · syncAll() · syncTable()       │    │
+│  │  statusStream · conflict resolution · retry      │    │
+│  └────────────┬────────────────────┬────────────────┘    │
+│               ▼                    ▼                     │
+│  ┌────────────────┐   ┌─────────────────────┐           │
+│  │   LocalStore   │   │   RemoteAdapter     │           │
+│  │ (sqflite/drift │   │ (supabase/firebase/ │           │
+│  │  hive/isar)    │   │  appwrite/graphql)  │           │
+│  └────────┬───────┘   └──────────┬──────────┘           │
+│           ▼                      ▼                      │
+│     Local SQLite/NoSQL      Remote Backend              │
+└─────────────────────────────────────────────────────────┘</code></pre><h2>Core Components</h2><h3>SyncEngine</h3><p>The central orchestrator. It coordinates pulling data from the remote backend, pushing local changes, resolving conflicts, and emitting status updates. All sync operations go through the engine.</p><h3>LocalStore (Abstract)</h3><p>Handles all local persistence: reading/writing sync cursors, querying dirty (unsynced) records, upserting batches, and marking records as synced. Four implementations are provided:</p><table><thead><tr><th>Store</th><th>Backing</th><th>Best For</th></tr></thead><tbody><tr><td><code>SqfliteStore</code></td><td>SQLite</td><td>Production — battle-tested, 100K+ records</td></tr><tr><td><code>DriftStore</code></td><td>SQLite (typed)</td><td>Type safety, reactive streams, code gen</td></tr><tr><td><code>HiveStore</code></td><td>Hive (NoSQL)</td><td>Fast prototyping, small datasets</td></tr><tr><td><code>IsarStore</code></td><td>Isar (NoSQL)</td><td>High-performance mobile, encryption</td></tr></tbody></table><h3>RemoteAdapter (Abstract)</h3><p>Handles all remote communication: pulling pages of records, upserting, and soft deleting. Each adapter also provides optional real-time subscription support.</p><table><thead><tr><th>Adapter</th><th>Backend</th><th>Real-Time</th></tr></thead><tbody><tr><td><code>SupabaseAdapter</code></td><td>Supabase (PostgreSQL)</td><td>✅ via WebSocket LISTEN/NOTIFY</td></tr><tr><td><code>FirebaseFirestoreAdapter</code></td><td>Cloud Firestore</td><td>✅ via Snapshot listeners</td></tr><tr><td><code>AppwriteAdapter</code></td><td>Appwrite</td><td>✅ via RealtimeService</td></tr><tr><td><code>GraphQLAdapter</code></td><td>Any GraphQL server</td><td>✅ via Subscriptions</td></tr></tbody></table><h3>ReplicoreConfig</h3><p>Immutable configuration controlling batch sizes, retry policies, timeouts, and feature flags. Three presets: <code>production()</code>, <code>development()</code>, <code>testing()</code>.</p><h3>TableConfig</h3><p>Per-table configuration specifying column mappings, sync strategy, and optional custom conflict resolver.</p><h2>Sync Cycle</h2><ol><li><strong>Init</strong> — <code>engine.init()</code> ensures sync columns (<code>is_synced</code>, <code>op_id</code>) exist in the local database.</li><li><strong>Pull</strong> — Fetches remote records modified since the last cursor, using keyset pagination. Conflicts are detected and resolved per the table's strategy.</li><li><strong>Push</strong> — Queries local dirty records (<code>is_synced = 0</code>), assigns idempotent operation IDs, then batch-upserts/deletes to the remote backend.</li><li><strong>Mark Synced</strong> — Successfully pushed records are marked <code>is_synced = 1</code> locally.</li><li><strong>Cursor Update</strong> — The sync cursor is advanced to the latest <code>updated_at</code> timestamp.</li></ol><div class="callout callout-success"><span class="icon">✅</span><div>All sync operations are <strong>idempotent</strong>. The operation ID (<code>op_id</code>) prevents duplicate writes even if the network fails mid-push and the engine retries.</div></div><h2>Dependency Graph</h2><pre><code>SyncEngine
+  ├── LocalStore          (required)
+  ├── RemoteAdapter       (required)
+  ├── ReplicoreConfig     (optional — defaults to ReplicoreConfig())
+  ├── Logger              (optional — defaults to ConsoleLogger())
+  └── MetricsCollector    (optional — defaults to InMemoryMetricsCollector())</code></pre><div class="page-nav"><a href="getting-started.html"><div class="label">← Previous</div><div class="title">Quick Start</div></a><a href="sync-engine.html" class="next"><div class="label">Next →</div><div class="title">Sync Engine</div></a></div>
+<div class="footer">Replicore v0.5.1 — Enterprise Local-First Sync for Flutter &middot; MIT License</div>
+</main>
+</div>
+</body></html>

@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Supabase Backend — Replicore Docs</title>
+<link rel="stylesheet" href="assets/style.css">
+<script src="assets/app.js"></script>
+</head>
+<body>
+<div class="topbar">
+  <button class="hamburger" onclick="toggleSidebar()">☰</button>
+  <div class="logo">Replicore <span>v0.5.1 Docs</span></div>
+  <div class="spacer"></div>
+  <button id="theme-btn" onclick="toggleDark()">🌙 Dark</button>
+</div>
+<div class="page">
+<nav class="sidebar"><div class="section-title">GETTING STARTED</div>
+<a href="index.html"><span class="icon">🏠</span>Home</a>
+<a href="getting-started.html"><span class="icon">🚀</span>Quick Start</a>
+<a href="architecture.html"><span class="icon">🏗️</span>Architecture</a>
+<div class="section-title">CORE CONCEPTS</div>
+<a href="sync-engine.html"><span class="icon">⚙️</span>Sync Engine</a>
+<a href="sync-conflicts.html"><span class="icon">🔀</span>Conflict Resolution</a>
+<a href="configuration.html"><span class="icon">🎛️</span>Configuration</a>
+<a href="error-handling.html"><span class="icon">🛡️</span>Error Handling</a>
+<a href="metrics-logging.html"><span class="icon">📊</span>Metrics & Logging</a>
+<div class="section-title">REMOTE BACKENDS</div>
+<a href="backend-supabase.html" class="active"><span class="icon">💜</span>Supabase</a>
+<a href="backend-firebase.html"><span class="icon">🔶</span>Firebase Firestore</a>
+<a href="backend-appwrite.html"><span class="icon">🌍</span>Appwrite</a>
+<a href="backend-graphql.html"><span class="icon">◼️</span>GraphQL</a>
+<div class="section-title">LOCAL STORAGE</div>
+<a href="storage-sqflite.html"><span class="icon">🗄️</span>SQLite (sqflite)</a>
+<a href="storage-drift.html"><span class="icon">🔐</span>Drift</a>
+<a href="storage-hive.html"><span class="icon">📦</span>Hive</a>
+<a href="storage-isar.html"><span class="icon">⚡</span>Isar</a>
+<div class="section-title">ADVANCED</div>
+<a href="orchestration.html"><span class="icon">🎭</span>Sync Orchestration</a>
+<a href="realtime.html"><span class="icon">📡</span>Real-Time Sync</a>
+<a href="widgets.html"><span class="icon">🎨</span>UI Widgets</a>
+<a href="multi-engine.html"><span class="icon">🔗</span>Multi-Engine</a>
+<a href="diagnostics.html"><span class="icon">🔍</span>Health & Diagnostics</a>
+<a href="testing.html"><span class="icon">🧪</span>Testing</a>
+<div class="section-title">REFERENCE</div>
+<a href="api-reference.html"><span class="icon">📖</span>API Reference</a>
+<a href="changelog.html"><span class="icon">📋</span>Changelog</a>
+</nav>
+<main class="content">
+<h1>Supabase Backend</h1>
+<p style="opacity:.75;font-size:.9rem;margin-top:-.5rem">PostgreSQL via Supabase + real-time WebSocket sync</p><p><code>SupabaseAdapter</code> connects Replicore to a Supabase PostgreSQL backend. It supports cursor-based pagination, native batch upserts, and real-time subscriptions via WebSocket.</p><h2>Setup</h2><pre><code class="language-yaml">dependencies:
+  replicore: ^0.5.1
+  supabase_flutter: ^2.12.0
+  sqflite: ^2.4.2</code></pre><pre><code class="language-dart">import &#x27;package:replicore/replicore.dart&#x27;;
+import &#x27;package:supabase_flutter/supabase_flutter.dart&#x27;;
+
+final adapter = SupabaseAdapter(
+  client: Supabase.instance.client,
+  localStore: sqfliteStore,
+  postgresChangeEventAll: PostgresChangeEvent.all,
+  isAuthException: (e) =&gt; e is AuthException,
+  updatedAtColumn: &#x27;updated_at&#x27;,  // default
+);</code></pre><h2>Required Database Schema</h2><p>Every table synced with Replicore must have these columns on Supabase:</p><pre><code class="language-sql">CREATE TABLE todos (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  title TEXT NOT NULL,
+  completed BOOLEAN DEFAULT false,
+  -- Required by Replicore:
+  updated_at TIMESTAMPTZ DEFAULT now(),
+  deleted_at TIMESTAMPTZ NULL
+);
+
+-- Recommended: index for keyset pagination performance
+CREATE INDEX idx_todos_updated_at ON todos(updated_at);</code></pre><div class="callout callout-warn"><span class="icon">⚠️</span><div>The <code>updated_at</code> column must be auto-updated on every write. Use a Supabase trigger or set it in your application code.</div></div><h2>Real-Time Subscriptions</h2><pre><code class="language-dart">final realtimeProvider = SupabaseRealtimeProvider(
+  client: Supabase.instance.client,
+  postgresChangeEventAll: PostgresChangeEvent.all,
+  connectionTimeout: Duration(seconds: 30),
+);
+
+final manager = RealtimeSubscriptionManager(
+  config: RealtimeSubscriptionConfig.production(),
+  provider: realtimeProvider,
+  engine: engine,
+  logger: ConsoleLogger(),
+);
+
+await manager.initialize([&#x27;todos&#x27;, &#x27;projects&#x27;]);</code></pre><h2>Batch Operations</h2><p>SupabaseAdapter uses native PostgreSQL <code>UPSERT</code> for batch operations — true atomic writes for maximum throughput.</p><h2>Security</h2><ul><li>Enable <strong>Row-Level Security (RLS)</strong> on all synced tables</li><li>Handle session expiry: catch <code>SyncAuthException</code> and re-authenticate</li><li>Never log auth tokens — use <code>NoOpLogger</code> in production if needed</li></ul><div class="page-nav"><a href="metrics-logging.html"><div class="label">← Previous</div><div class="title">Metrics & Logging</div></a><a href="backend-firebase.html" class="next"><div class="label">Next →</div><div class="title">Firebase Firestore</div></a></div>
+<div class="footer">Replicore v0.5.1 — Enterprise Local-First Sync for Flutter &middot; MIT License</div>
+</main>
+</div>
+</body></html>

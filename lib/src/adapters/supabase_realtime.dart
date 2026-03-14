@@ -1,16 +1,29 @@
 import 'dart:async';
 
-import 'package:supabase_flutter/supabase_flutter.dart';
-
 import '../core/realtime_subscription.dart';
 
 /// Supabase implementation of [RealtimeSubscriptionProvider].
 ///
 /// Uses Supabase's native PostgreSQL LISTEN/NOTIFY mechanism via WebSocket
 /// for efficient real-time change notifications.
+///
+/// Example setup:
+/// ```dart
+/// import 'package:supabase_flutter/supabase_flutter.dart';
+///
+/// final provider = SupabaseRealtimeProvider(
+///   client: Supabase.instance.client,
+///   postgresChangeEventAll: PostgresChangeEvent.all,
+/// );
+/// ```
 class SupabaseRealtimeProvider implements RealtimeSubscriptionProvider {
-  final SupabaseClient client;
+  /// Supabase client instance (dynamic to avoid hard dependency).
+  final dynamic client;
+
   final Duration connectionTimeout;
+
+  /// The `PostgresChangeEvent.all` enum value from `package:supabase_flutter`.
+  final dynamic postgresChangeEventAll;
 
   final Map<String, StreamSubscription> _subscriptions = {};
   bool _isConnected = false;
@@ -18,6 +31,7 @@ class SupabaseRealtimeProvider implements RealtimeSubscriptionProvider {
 
   SupabaseRealtimeProvider({
     required this.client,
+    required this.postgresChangeEventAll,
     this.connectionTimeout = const Duration(seconds: 30),
   }) {
     _connectionStatusController = StreamController<bool>.broadcast();
@@ -44,7 +58,7 @@ class SupabaseRealtimeProvider implements RealtimeSubscriptionProvider {
       // Setup listener for database changes
       channel
           .onPostgresChanges(
-            event: PostgresChangeEvent.all,
+            event: postgresChangeEventAll,
             schema: 'public',
             table: table,
             callback: (payload) {

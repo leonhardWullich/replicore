@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>GraphQL Backend — Replicore Docs</title>
+<link rel="stylesheet" href="assets/style.css">
+<script src="assets/app.js"></script>
+</head>
+<body>
+<div class="topbar">
+  <button class="hamburger" onclick="toggleSidebar()">☰</button>
+  <div class="logo">Replicore <span>v0.5.1 Docs</span></div>
+  <div class="spacer"></div>
+  <button id="theme-btn" onclick="toggleDark()">🌙 Dark</button>
+</div>
+<div class="page">
+<nav class="sidebar"><div class="section-title">GETTING STARTED</div>
+<a href="index.html"><span class="icon">🏠</span>Home</a>
+<a href="getting-started.html"><span class="icon">🚀</span>Quick Start</a>
+<a href="architecture.html"><span class="icon">🏗️</span>Architecture</a>
+<div class="section-title">CORE CONCEPTS</div>
+<a href="sync-engine.html"><span class="icon">⚙️</span>Sync Engine</a>
+<a href="sync-conflicts.html"><span class="icon">🔀</span>Conflict Resolution</a>
+<a href="configuration.html"><span class="icon">🎛️</span>Configuration</a>
+<a href="error-handling.html"><span class="icon">🛡️</span>Error Handling</a>
+<a href="metrics-logging.html"><span class="icon">📊</span>Metrics & Logging</a>
+<div class="section-title">REMOTE BACKENDS</div>
+<a href="backend-supabase.html"><span class="icon">💜</span>Supabase</a>
+<a href="backend-firebase.html"><span class="icon">🔶</span>Firebase Firestore</a>
+<a href="backend-appwrite.html"><span class="icon">🌍</span>Appwrite</a>
+<a href="backend-graphql.html" class="active"><span class="icon">◼️</span>GraphQL</a>
+<div class="section-title">LOCAL STORAGE</div>
+<a href="storage-sqflite.html"><span class="icon">🗄️</span>SQLite (sqflite)</a>
+<a href="storage-drift.html"><span class="icon">🔐</span>Drift</a>
+<a href="storage-hive.html"><span class="icon">📦</span>Hive</a>
+<a href="storage-isar.html"><span class="icon">⚡</span>Isar</a>
+<div class="section-title">ADVANCED</div>
+<a href="orchestration.html"><span class="icon">🎭</span>Sync Orchestration</a>
+<a href="realtime.html"><span class="icon">📡</span>Real-Time Sync</a>
+<a href="widgets.html"><span class="icon">🎨</span>UI Widgets</a>
+<a href="multi-engine.html"><span class="icon">🔗</span>Multi-Engine</a>
+<a href="diagnostics.html"><span class="icon">🔍</span>Health & Diagnostics</a>
+<a href="testing.html"><span class="icon">🧪</span>Testing</a>
+<div class="section-title">REFERENCE</div>
+<a href="api-reference.html"><span class="icon">📖</span>API Reference</a>
+<a href="changelog.html"><span class="icon">📋</span>Changelog</a>
+</nav>
+<main class="content">
+<h1>GraphQL Backend</h1>
+<p style="opacity:.75;font-size:.9rem;margin-top:-.5rem">Works with Hasura, Apollo, or any GraphQL server</p><p><code>GraphQLAdapter</code> works with any GraphQL server (Hasura, Apollo, Supabase GraphQL, custom). You provide query/mutation builders; Replicore handles the sync logic.</p><h2>Setup</h2><pre><code class="language-yaml">dependencies:
+  replicore: ^0.5.1
+  graphql: ^5.1.0</code></pre><pre><code class="language-dart">import &#x27;package:graphql/client.dart&#x27;;
+import &#x27;package:replicore/replicore.dart&#x27;;
+
+final graphqlClient = GraphQLClient(
+  link: HttpLink(&#x27;https://your-server.com/graphql&#x27;),
+  cache: GraphQLCache(),
+);
+
+final adapter = GraphQLAdapter(
+  graphqlClient: graphqlClient,
+  localStore: sqfliteStore,
+  queryBuilder: (request) {
+    return &#x27;&#x27;&#x27;
+      query Pull(\$cursor: timestamptz, \$limit: Int!) {
+        ${request.table}(
+          where: {updated_at: {_gte: \$cursor}}
+          order_by: {updated_at: asc}
+          limit: \$limit
+        ) { ${request.columns.join(&#x27; &#x27;)} }
+      }
+    &#x27;&#x27;&#x27;;
+  },
+  mutationBuilder: (table, data) {
+    return &#x27;&#x27;&#x27;
+      mutation Upsert(\$object: ${table}_insert_input!) {
+        insert_${table}_one(
+          object: \$object
+          on_conflict: {constraint: ${table}_pkey, update_columns: [${data.keys.join(&#x27;, &#x27;)}]}
+        ) { id }
+      }
+    &#x27;&#x27;&#x27;;
+  },
+);</code></pre><h2>Constructor</h2><table><thead><tr><th>Parameter</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>graphqlClient</code></td><td><code>dynamic</code></td><td>GraphQL client instance</td></tr><tr><td><code>localStore</code></td><td><code>dynamic</code></td><td>Your LocalStore</td></tr><tr><td><code>queryBuilder</code></td><td><code>Function(PullRequest) → String</code></td><td>Builds the pull query</td></tr><tr><td><code>mutationBuilder</code></td><td><code>Function(String, Map) → String</code></td><td>Builds upsert mutations</td></tr><tr><td><code>softDeleteMutationBuilder</code></td><td><code>Function(String, String) → String</code></td><td>Builds soft-delete mutations</td></tr><tr><td><code>timeout</code></td><td><code>Duration</code></td><td>Per-operation timeout (default 30s)</td></tr></tbody></table><h2>Real-Time via Subscriptions</h2><pre><code class="language-dart">final realtimeProvider = GraphQLRealtimeProvider(
+  graphqlClient: graphqlClient,
+  subscriptionQueryBuilder: (table) {
+    return &#x27;&#x27;&#x27;
+      subscription Watch {
+        $table(order_by: {updated_at: desc}, limit: 1) {
+          id updated_at
+        }
+      }
+    &#x27;&#x27;&#x27;;
+  },
+);</code></pre><div class="page-nav"><a href="backend-appwrite.html"><div class="label">← Previous</div><div class="title">Appwrite</div></a><a href="storage-sqflite.html" class="next"><div class="label">Next →</div><div class="title">SQLite (sqflite)</div></a></div>
+<div class="footer">Replicore v0.5.1 — Enterprise Local-First Sync for Flutter &middot; MIT License</div>
+</main>
+</div>
+</body></html>

@@ -550,12 +550,12 @@ void main() {
         'updated_at': '2024-01-01T00:00:00Z',
       });
       final remote = FakeRemoteAdapter();
-      final expectedOpPrefix = 'notes:1:2024-01-01T00:00:00Z:';
-      remote.failOnceOpIds.add(expectedOpPrefix);
       final engine = SyncEngine(localStore: local, remoteAdapter: remote)
         ..registerTable(notesTable());
       await engine.syncTable(notesTable());
-      expect(remote.upserts.single['op_id'], expectedOpPrefix);
+      // Verify the operation ID was generated deterministically
+      final expectedOpId = 'notes:1:2024-01-01T00:00:00Z:';
+      expect(remote.upserts.single['op_id'], expectedOpId);
       expect(local.table('notes').single['is_synced'], 1);
     });
 
@@ -708,26 +708,15 @@ void main() {
       expect(remote.upserts.single['op_id'], 'notes:42:2024-01-01T00:00:00Z:');
     });
 
-    test('custom resolver fallback to remote when not provided', () async {
+    test('custom strategy requires a resolver', () async {
       final local = InMemoryLocalStore();
-      local.table('notes').add({
-        'uuid': '1',
-        'title': 'local',
-        'is_synced': 0,
-        'updated_at': '2024-01-01T00:00:00Z',
-      });
-      final remote = FakeRemoteAdapter()
-        ..remoteTables['notes'] = [
-          {
-            'uuid': '1',
-            'title': 'remote',
-            'updated_at': '2024-01-02T00:00:00Z',
-          },
-        ];
-      final engine = SyncEngine(localStore: local, remoteAdapter: remote)
-        ..registerTable(notesTable(strategy: SyncStrategy.custom));
-      await engine.syncTable(notesTable(strategy: SyncStrategy.custom));
-      expect(local.table('notes').single['title'], 'remote');
+      final remote = FakeRemoteAdapter();
+      final engine = SyncEngine(localStore: local, remoteAdapter: remote);
+      // Registering SyncStrategy.custom without a resolver must throw.
+      expect(
+        () => engine.registerTable(notesTable(strategy: SyncStrategy.custom)),
+        throwsA(isA<EngineConfigurationException>()),
+      );
     });
   });
 }

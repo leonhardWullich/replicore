@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'diagnostics.dart';
 import 'exceptions.dart';
 import 'logger.dart';
 import 'metrics.dart';
@@ -75,7 +76,7 @@ class SyncManager {
   Future<SyncSessionMetrics> syncEngine(String engineId) async {
     final engine = getEngine(engineId);
     if (engine == null) {
-      throw UnregisteredTableException(
+      throw EngineConfigurationException(
         'No engine registered with id "$engineId"',
       );
     }
@@ -145,25 +146,3 @@ class SyncManager {
     logger.info('SyncManager disposed');
   }
 }
-
-/// Result type for the health check (required for proper import)
-class HealthCheckResult {
-  final String component;
-  final HealthStatus status;
-  final String message;
-  final Map<String, dynamic>? details;
-  final DateTime timestamp;
-
-  HealthCheckResult({
-    required this.component,
-    required this.status,
-    required this.message,
-    this.details,
-    DateTime? timestamp,
-  }) : timestamp = timestamp ?? DateTime.now().toUtc();
-
-  @override
-  String toString() => '$component [$status]: $message';
-}
-
-enum HealthStatus { healthy, degraded, unhealthy }

@@ -328,9 +328,9 @@ Context-aware error banner that automatically handles different error types.
 
 ```dart
 SyncErrorBanner(
-  statusStream: engine.statusStream,
+  error: syncError, // ReplicoreException?
   onRetry: () => engine.syncAll(),
-  showDismiss: true,
+  onDismiss: () => setState(() => syncError = null),
 )
 ```
 
@@ -338,7 +338,7 @@ SyncErrorBanner(
 - Auto-detects error type (network, auth, schema, server)
 - Color-coded by error severity
 - Built-in retry button
-- Dismissible with auto-hide
+- Dismissible
 - Network/offline state detection
 
 #### 4. **SyncStatusPanel**
@@ -347,11 +347,13 @@ Comprehensive dashboard combining all sync UI elements in one place.
 ```dart
 SyncStatusPanel(
   statusStream: engine.statusStream,
-  metricsStream: engine.metricsStream,
   onSync: () => engine.syncAll(),
+  metrics: lastSessionMetrics, // SyncSessionMetrics?
+  error: currentError, // ReplicoreException?
+  onErrorDismiss: () => setState(() => currentError = null),
   showMetrics: true,
-  showErrors: true,
-  showOfflineIndicator: true,
+  showButton: true,
+  showStatus: true,
 )
 ```
 
@@ -359,7 +361,6 @@ SyncStatusPanel(
 - Status display
 - Metrics card
 - Error banner
-- Offline indicator
 - Manual sync button
 
 **Perfect for:**
@@ -385,17 +386,17 @@ OfflineIndicator(
 - Perfect for app bars
 
 #### 6. **SyncButton**
-Smart floating action button with automatic loading state during sync.
+Smart button with automatic loading state during sync.
 
 ```dart
 SyncButton(
-  onSync: () async {
+  onPressed: () async {
     final metrics = await engine.syncAll();
     print('Sync complete: ${metrics.overallSuccess}');
   },
+  isSyncing: isSyncingState, // bool — tracks current sync state
   icon: Icons.sync,
-  loadingIcon: Icon(Icons.hourglass_bottom),
-  disabledColor: Colors.grey,
+  label: 'Sync Now',
 )
 ```
 
@@ -421,6 +422,21 @@ class SyncDashboard extends StatefulWidget {
 }
 
 class _SyncDashboardState extends State<SyncDashboard> {
+  SyncSessionMetrics? _lastMetrics;
+  ReplicoreException? _lastError;
+
+  Future<void> _sync() async {
+    try {
+      final metrics = await widget.engine.syncAll();
+      setState(() {
+        _lastMetrics = metrics;
+        _lastError = null;
+      });
+    } on ReplicoreException catch (e) {
+      setState(() => _lastError = e);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -434,8 +450,9 @@ class _SyncDashboardState extends State<SyncDashboard> {
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(50),
           child: SyncErrorBanner(
-            statusStream: widget.engine.statusStream,
-            onRetry: () => widget.engine.syncAll(),
+            error: _lastError,
+            onRetry: _sync,
+            onDismiss: () => setState(() => _lastError = null),
           ),
         ),
       ),
@@ -448,28 +465,21 @@ class _SyncDashboardState extends State<SyncDashboard> {
               // Status widget
               SyncStatusWidget(
                 statusStream: widget.engine.statusStream,
-                onSync: () => widget.engine.syncAll(),
+                onSync: _sync,
                 showProgress: true,
               ),
               const SizedBox(height: 16),
               
-              // Metrics card
-              StreamBuilder<SyncSessionMetrics>(
-                stream: widget.engine.metricsStream,
-                builder: (context, snapshot) {
-                  if (snapshot.hasData) {
-                    return SyncMetricsCard(
-                      metrics: snapshot.data!,
-                    );
-                  }
-                  return const SizedBox.shrink();
-                },
-              ),
+              // Metrics card (shown after first sync)
+              if (_lastMetrics != null)
+                SyncMetricsCard(
+                  metrics: _lastMetrics!,
+                ),
               const SizedBox(height: 24),
               
               // Manual sync button
               ElevatedButton.icon(
-                onPressed: () => widget.engine.syncAll(),
+                onPressed: _sync,
                 icon: const Icon(Icons.sync),
                 label: const Text('Sync Now'),
               ),
@@ -479,12 +489,15 @@ class _SyncDashboardState extends State<SyncDashboard> {
       ),
       // Floating action button for quick sync
       floatingActionButton: SyncButton(
-        onSync: () async {
-          await widget.engine.syncAll();
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Sync complete!')),
-          );
+        onPressed: () async {
+          await _sync();
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Sync complete!')),
+            );
+          }
         },
+        isSyncing: false, // Wire to your state management
       ),
     );
   }
@@ -518,11 +531,10 @@ SyncStatusWidget(
 
 // Custom SyncErrorBanner
 SyncErrorBanner(
-  statusStream: engine.statusStream,
+  error: syncError,
   onRetry: () => engine.syncAll(),
-  backgroundColor: Colors.red.shade100,
-  textColor: Colors.red.shade900,
-  actionColor: Colors.red.shade600,
+  onDismiss: () => clearError(),
+  customMessage: 'Sync failed — tap Retry.',
 )
 ```
 
@@ -833,32 +845,23 @@ Replicore includes automatic real-time sync when data changes on the remote back
 
 ```dart
 final manager = RealtimeSubscriptionManager(
+  config: RealtimeSubscriptionConfig.production(),
+  provider: myRealtimeProvider, // e.g. SupabaseRealtimeProvider
   engine: engine,
   logger: ConsoleLogger(),
-  debounceMilliseconds: 2000, // Coalesce rapid updates
-  autoReconnect: true,
-  reconnectExponentialBackoff: const ReconnectExponentialBackoff(
-    initialDelayMs: 1000,
-    maxDelayMs: 60000,
-    maxAttempts: 10,
-  ),
 );
 
-// Subscribe to all tables (or filter specific ones)
-await manager.subscribeToAllTables();
+// Subscribe to specific tables
+await manager.initialize(['todos', 'projects']);
 
 // Connection status monitoring
-manager.connectionStatusStream.listen((status) {
-  print('Real-time status: $status');
-});
+print('Connected: ${manager.isConnected}');
 
-// Auto-cleanup
-// (dispose when app closes)
-// override
-// void dispose() {
-//   manager.dispose();
-//   super.dispose();
-// }
+// Manual sync for pending tables
+await manager.syncPendingTables();
+
+// Cleanup when done
+await manager.close();
 ```
 
 ### Real-Time Support Matrix
@@ -966,7 +969,6 @@ MIT - See [LICENSE](LICENSE) for details.
 
 ## 🆘 Support & Contact
 
-- **Documentation**: [ENTERPRISE_README.md](ENTERPRISE_README.md)
 - **Examples**: [example/](example/) directory
 - **Issues**: [GitHub Issues](https://github.com/leonhardWullich/replicore/issues)
 - **Discussions**: [GitHub Discussions](https://github.com/leonhardWullich/replicore/discussions)

@@ -1,7 +1,5 @@
 import 'dart:convert';
 
-import 'package:sqflite/sqflite.dart';
-
 import '../core/exceptions.dart';
 import '../core/models.dart';
 import 'local_store.dart';
@@ -12,16 +10,34 @@ import 'local_store.dart';
 /// created automatically on first use. This guarantees that cursor data is
 /// evicted only when the SQLite database itself is deleted — never when the
 /// user clears app cache or the OS purges SharedPreferences / NSUserDefaults.
+///
+/// Example setup:
+/// ```dart
+/// import 'package:sqflite/sqflite.dart';
+///
+/// final store = SqfliteStore(
+///   database,
+///   conflictAlgorithm: ConflictAlgorithm.replace,
+/// );
+/// ```
 class SqfliteStore implements LocalStore {
-  final Database db;
+  /// The sqflite [Database] instance. Accepts `dynamic` so that
+  /// `package:sqflite` does not need to be a direct dependency of Replicore.
+  final dynamic db;
+
   final String isSyncedColumn;
   final String operationIdColumn;
+
+  /// The conflict-resolution algorithm used for upsert / cursor writes.
+  /// Pass `ConflictAlgorithm.replace` from your own `package:sqflite` import.
+  final dynamic conflictAlgorithm;
 
   /// Name of the internal meta-table used to persist sync cursors.
   static const _metaTable = '_replicore_meta';
 
   SqfliteStore(
     this.db, {
+    required this.conflictAlgorithm,
     this.isSyncedColumn = 'is_synced',
     this.operationIdColumn = 'op_id',
   });
@@ -108,7 +124,7 @@ class SqfliteStore implements LocalStore {
     await db.insert(_metaTable, {
       'key': 'cursor_$table',
       'value': jsonEncode(cursor.toJson()),
-    }, conflictAlgorithm: ConflictAlgorithm.replace);
+    }, conflictAlgorithm: conflictAlgorithm);
   }
 
   @override
@@ -137,11 +153,7 @@ class SqfliteStore implements LocalStore {
     try {
       final batch = db.batch();
       for (final record in records) {
-        batch.insert(
-          table,
-          record,
-          conflictAlgorithm: ConflictAlgorithm.replace,
-        );
+        batch.insert(table, record, conflictAlgorithm: conflictAlgorithm);
       }
       await batch.commit(noResult: true);
     } catch (e) {

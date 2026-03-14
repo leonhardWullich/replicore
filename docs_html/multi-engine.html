@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Multi-Engine (SyncManager) — Replicore Docs</title>
+<link rel="stylesheet" href="assets/style.css">
+<script src="assets/app.js"></script>
+</head>
+<body>
+<div class="topbar">
+  <button class="hamburger" onclick="toggleSidebar()">☰</button>
+  <div class="logo">Replicore <span>v0.5.1 Docs</span></div>
+  <div class="spacer"></div>
+  <button id="theme-btn" onclick="toggleDark()">🌙 Dark</button>
+</div>
+<div class="page">
+<nav class="sidebar"><div class="section-title">GETTING STARTED</div>
+<a href="index.html"><span class="icon">🏠</span>Home</a>
+<a href="getting-started.html"><span class="icon">🚀</span>Quick Start</a>
+<a href="architecture.html"><span class="icon">🏗️</span>Architecture</a>
+<div class="section-title">CORE CONCEPTS</div>
+<a href="sync-engine.html"><span class="icon">⚙️</span>Sync Engine</a>
+<a href="sync-conflicts.html"><span class="icon">🔀</span>Conflict Resolution</a>
+<a href="configuration.html"><span class="icon">🎛️</span>Configuration</a>
+<a href="error-handling.html"><span class="icon">🛡️</span>Error Handling</a>
+<a href="metrics-logging.html"><span class="icon">📊</span>Metrics & Logging</a>
+<div class="section-title">REMOTE BACKENDS</div>
+<a href="backend-supabase.html"><span class="icon">💜</span>Supabase</a>
+<a href="backend-firebase.html"><span class="icon">🔶</span>Firebase Firestore</a>
+<a href="backend-appwrite.html"><span class="icon">🌍</span>Appwrite</a>
+<a href="backend-graphql.html"><span class="icon">◼️</span>GraphQL</a>
+<div class="section-title">LOCAL STORAGE</div>
+<a href="storage-sqflite.html"><span class="icon">🗄️</span>SQLite (sqflite)</a>
+<a href="storage-drift.html"><span class="icon">🔐</span>Drift</a>
+<a href="storage-hive.html"><span class="icon">📦</span>Hive</a>
+<a href="storage-isar.html"><span class="icon">⚡</span>Isar</a>
+<div class="section-title">ADVANCED</div>
+<a href="orchestration.html"><span class="icon">🎭</span>Sync Orchestration</a>
+<a href="realtime.html"><span class="icon">📡</span>Real-Time Sync</a>
+<a href="widgets.html"><span class="icon">🎨</span>UI Widgets</a>
+<a href="multi-engine.html" class="active"><span class="icon">🔗</span>Multi-Engine</a>
+<a href="diagnostics.html"><span class="icon">🔍</span>Health & Diagnostics</a>
+<a href="testing.html"><span class="icon">🧪</span>Testing</a>
+<div class="section-title">REFERENCE</div>
+<a href="api-reference.html"><span class="icon">📖</span>API Reference</a>
+<a href="changelog.html"><span class="icon">📋</span>Changelog</a>
+</nav>
+<main class="content">
+<h1>Multi-Engine (SyncManager)</h1>
+<p style="opacity:.75;font-size:.9rem;margin-top:-.5rem">Coordinate multiple SyncEngine instances</p><p><code>SyncManager</code> coordinates multiple <code>SyncEngine</code> instances — useful for multi-tenant apps, workspaces, or isolated sync contexts.</p><h2>Setup</h2><pre><code class="language-dart">final manager = SyncManager(
+  logger: ConsoleLogger(),
+  metricsCollector: InMemoryMetricsCollector(),
+);
+
+manager.registerEngine(&#x27;workspace-a&#x27;, engineA);
+manager.registerEngine(&#x27;workspace-b&#x27;, engineB);
+
+await manager.initializeAll();</code></pre><h2>API</h2><table><thead><tr><th>Method</th><th>Returns</th><th>Description</th></tr></thead><tbody><tr><td><code>registerEngine(id, engine)</code></td><td><code>void</code></td><td>Register an engine with a unique ID</td></tr><tr><td><code>getEngine(id)</code></td><td><code>SyncEngine?</code></td><td>Retrieve an engine by ID</td></tr><tr><td><code>getAllEngines()</code></td><td><code>List&lt;SyncEngine&gt;</code></td><td>All registered engines</td></tr><tr><td><code>initializeAll()</code></td><td><code>Future&lt;void&gt;</code></td><td>Init all engines</td></tr><tr><td><code>syncAll()</code></td><td><code>Future&lt;Map&lt;String, SyncSessionMetrics&gt;&gt;</code></td><td>Sync all engines, returns metrics keyed by ID</td></tr><tr><td><code>syncEngine(id)</code></td><td><code>Future&lt;SyncSessionMetrics&gt;</code></td><td>Sync a specific engine by ID</td></tr><tr><td><code>startPeriodicSync(interval:)</code></td><td><code>void</code></td><td>Start a periodic timer syncing all engines</td></tr><tr><td><code>stopPeriodicSync()</code></td><td><code>void</code></td><td>Stop the periodic timer</td></tr><tr><td><code>checkAllHealth()</code></td><td><code>Future&lt;Map&lt;String, HealthCheckResult&gt;&gt;</code></td><td>Health check all engines</td></tr><tr><td><code>dispose()</code></td><td><code>Future&lt;void&gt;</code></td><td>Stop timers, dispose all engines</td></tr></tbody></table><h2>Usage Pattern</h2><pre><code class="language-dart">// Sync all engines
+final results = await manager.syncAll();
+for (final entry in results.entries) {
+  print(&#x27;${entry.key}: ${entry.value.overallSuccess}&#x27;);
+}
+
+// Periodic sync every 5 minutes
+manager.startPeriodicSync(interval: Duration(minutes: 5));
+
+// Cleanup
+await manager.dispose();</code></pre><div class="page-nav"><a href="widgets.html"><div class="label">← Previous</div><div class="title">UI Widgets</div></a><a href="diagnostics.html" class="next"><div class="label">Next →</div><div class="title">Health & Diagnostics</div></a></div>
+<div class="footer">Replicore v0.5.1 — Enterprise Local-First Sync for Flutter &middot; MIT License</div>
+</main>
+</div>
+</body></html>

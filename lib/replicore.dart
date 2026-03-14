@@ -14,10 +14,11 @@
 ///
 /// // 2. Create engine with your database and remote adapter
 /// final engine = SyncEngine(
-///   localStore: SqfliteStore(database),
+///   localStore: SqfliteStore(database, conflictAlgorithm: ConflictAlgorithm.replace),
 ///   remoteAdapter: SupabaseAdapter(
 ///     client: supabaseClient,
 ///     localStore: sqfliteStore,
+///     postgresChangeEventAll: PostgresChangeEvent.all,
 ///   ),
 ///   config: config,
 ///   logger: ConsoleLogger(),
@@ -68,6 +69,7 @@ export 'src/core/sync_strategy.dart';
 export 'src/core/sync_orchestration_strategy.dart';
 export 'src/core/table_config.dart';
 export 'src/core/realtime_subscription.dart';
+export 'src/core/sync_manager.dart';
 
 export 'src/adapters/remote_adapter.dart';
 export 'src/adapters/supabase_adapter.dart';

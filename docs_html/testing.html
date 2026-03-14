@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Testing — Replicore Docs</title>
+<link rel="stylesheet" href="assets/style.css">
+<script src="assets/app.js"></script>
+</head>
+<body>
+<div class="topbar">
+  <button class="hamburger" onclick="toggleSidebar()">☰</button>
+  <div class="logo">Replicore <span>v0.5.1 Docs</span></div>
+  <div class="spacer"></div>
+  <button id="theme-btn" onclick="toggleDark()">🌙 Dark</button>
+</div>
+<div class="page">
+<nav class="sidebar"><div class="section-title">GETTING STARTED</div>
+<a href="index.html"><span class="icon">🏠</span>Home</a>
+<a href="getting-started.html"><span class="icon">🚀</span>Quick Start</a>
+<a href="architecture.html"><span class="icon">🏗️</span>Architecture</a>
+<div class="section-title">CORE CONCEPTS</div>
+<a href="sync-engine.html"><span class="icon">⚙️</span>Sync Engine</a>
+<a href="sync-conflicts.html"><span class="icon">🔀</span>Conflict Resolution</a>
+<a href="configuration.html"><span class="icon">🎛️</span>Configuration</a>
+<a href="error-handling.html"><span class="icon">🛡️</span>Error Handling</a>
+<a href="metrics-logging.html"><span class="icon">📊</span>Metrics & Logging</a>
+<div class="section-title">REMOTE BACKENDS</div>
+<a href="backend-supabase.html"><span class="icon">💜</span>Supabase</a>
+<a href="backend-firebase.html"><span class="icon">🔶</span>Firebase Firestore</a>
+<a href="backend-appwrite.html"><span class="icon">🌍</span>Appwrite</a>
+<a href="backend-graphql.html"><span class="icon">◼️</span>GraphQL</a>
+<div class="section-title">LOCAL STORAGE</div>
+<a href="storage-sqflite.html"><span class="icon">🗄️</span>SQLite (sqflite)</a>
+<a href="storage-drift.html"><span class="icon">🔐</span>Drift</a>
+<a href="storage-hive.html"><span class="icon">📦</span>Hive</a>
+<a href="storage-isar.html"><span class="icon">⚡</span>Isar</a>
+<div class="section-title">ADVANCED</div>
+<a href="orchestration.html"><span class="icon">🎭</span>Sync Orchestration</a>
+<a href="realtime.html"><span class="icon">📡</span>Real-Time Sync</a>
+<a href="widgets.html"><span class="icon">🎨</span>UI Widgets</a>
+<a href="multi-engine.html"><span class="icon">🔗</span>Multi-Engine</a>
+<a href="diagnostics.html"><span class="icon">🔍</span>Health & Diagnostics</a>
+<a href="testing.html" class="active"><span class="icon">🧪</span>Testing</a>
+<div class="section-title">REFERENCE</div>
+<a href="api-reference.html"><span class="icon">📖</span>API Reference</a>
+<a href="changelog.html"><span class="icon">📋</span>Changelog</a>
+</nav>
+<main class="content">
+<h1>Testing</h1>
+<p style="opacity:.75;font-size:.9rem;margin-top:-.5rem">Dependency injection for fully testable sync</p><p>Replicore's architecture is fully testable via dependency injection. All core interfaces have in-memory or mock implementations.</p><h2>Test Configuration</h2><pre><code class="language-dart">final config = ReplicoreConfig.testing();
+// Minimal overhead: no logging, no metrics, fast timeouts</code></pre><h2>Test Doubles Strategy</h2><table><thead><tr><th>Interface</th><th>Test Double</th></tr></thead><tbody><tr><td><code>LocalStore</code></td><td>In-memory map-based implementation</td></tr><tr><td><code>RemoteAdapter</code></td><td>Fake with configurable responses</td></tr><tr><td><code>Logger</code></td><td><code>NoOpLogger()</code> or mock that captures calls</td></tr><tr><td><code>MetricsCollector</code></td><td><code>InMemoryMetricsCollector</code> or <code>NoOpMetricsCollector</code></td></tr></tbody></table><h2>Example: In-Memory Local Store</h2><pre><code class="language-dart">class InMemoryLocalStore implements LocalStore {
+  final Map&lt;String, List&lt;Map&lt;String, dynamic&gt;&gt;&gt; _tables = {};
+  final Map&lt;String, String&gt; _cursors = {};
+
+  List&lt;Map&lt;String, dynamic&gt;&gt; table(String name) =&gt;
+    _tables.putIfAbsent(name, () =&gt; []);
+
+  @override
+  Future&lt;List&lt;Map&lt;String, dynamic&gt;&gt;&gt; queryDirty(String table) async =&gt;
+    this.table(table).where((r) =&gt; r[&#x27;is_synced&#x27;] == 0).toList();
+
+  @override
+  Future&lt;void&gt; upsertBatch(String table, List&lt;Map&lt;String, dynamic&gt;&gt; records) async {
+    for (final record in records) {
+      final idx = this.table(table).indexWhere((r) =&gt; r[&#x27;id&#x27;] == record[&#x27;id&#x27;]);
+      if (idx &gt;= 0) this.table(table)[idx] = record;
+      else this.table(table).add(record);
+    }
+  }
+  // ... implement remaining LocalStore methods
+}</code></pre><h2>Example: Fake Remote Adapter</h2><pre><code class="language-dart">class FakeRemoteAdapter extends RemoteAdapter {
+  final Map&lt;String, List&lt;Map&lt;String, dynamic&gt;&gt;&gt; remoteTables = {};
+  final List&lt;Map&lt;String, dynamic&gt;&gt; upserts = [];
+
+  @override
+  Future&lt;PullResult&gt; pull(PullRequest request) async {
+    final records = remoteTables[request.table] ?? [];
+    return PullResult(records: records, nextCursor: null);
+  }
+
+  @override
+  Future&lt;void&gt; upsert({
+    required String table,
+    required Map&lt;String, dynamic&gt; data,
+    String? idempotencyKey,
+  }) async {
+    upserts.add({&#x27;table&#x27;: table, &#x27;data&#x27;: data, &#x27;op_id&#x27;: idempotencyKey});
+  }
+
+  // ... implement remaining RemoteAdapter methods
+}</code></pre><h2>Integration Test</h2><pre><code class="language-dart">test(&#x27;full sync cycle&#x27;, () async {
+  final local = InMemoryLocalStore();
+  final remote = FakeRemoteAdapter();
+  final engine = SyncEngine(
+    localStore: local,
+    remoteAdapter: remote,
+    config: ReplicoreConfig.testing(),
+    logger: NoOpLogger(),
+  );
+
+  engine.registerTable(TableConfig(
+    name: &#x27;todos&#x27;,
+    columns: [&#x27;id&#x27;, &#x27;title&#x27;, &#x27;updated_at&#x27;, &#x27;deleted_at&#x27;],
+  ));
+
+  await engine.init();
+  final metrics = await engine.syncAll();
+  expect(metrics.overallSuccess, isTrue);
+});</code></pre><div class="page-nav"><a href="diagnostics.html"><div class="label">← Previous</div><div class="title">Health & Diagnostics</div></a><a href="api-reference.html" class="next"><div class="label">Next →</div><div class="title">API Reference</div></a></div>
+<div class="footer">Replicore v0.5.1 — Enterprise Local-First Sync for Flutter &middot; MIT License</div>
+</main>
+</div>
+</body></html>

@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Conflict Resolution — Replicore Docs</title>
+<link rel="stylesheet" href="assets/style.css">
+<script src="assets/app.js"></script>
+</head>
+<body>
+<div class="topbar">
+  <button class="hamburger" onclick="toggleSidebar()">☰</button>
+  <div class="logo">Replicore <span>v0.5.1 Docs</span></div>
+  <div class="spacer"></div>
+  <button id="theme-btn" onclick="toggleDark()">🌙 Dark</button>
+</div>
+<div class="page">
+<nav class="sidebar"><div class="section-title">GETTING STARTED</div>
+<a href="index.html"><span class="icon">🏠</span>Home</a>
+<a href="getting-started.html"><span class="icon">🚀</span>Quick Start</a>
+<a href="architecture.html"><span class="icon">🏗️</span>Architecture</a>
+<div class="section-title">CORE CONCEPTS</div>
+<a href="sync-engine.html"><span class="icon">⚙️</span>Sync Engine</a>
+<a href="sync-conflicts.html" class="active"><span class="icon">🔀</span>Conflict Resolution</a>
+<a href="configuration.html"><span class="icon">🎛️</span>Configuration</a>
+<a href="error-handling.html"><span class="icon">🛡️</span>Error Handling</a>
+<a href="metrics-logging.html"><span class="icon">📊</span>Metrics & Logging</a>
+<div class="section-title">REMOTE BACKENDS</div>
+<a href="backend-supabase.html"><span class="icon">💜</span>Supabase</a>
+<a href="backend-firebase.html"><span class="icon">🔶</span>Firebase Firestore</a>
+<a href="backend-appwrite.html"><span class="icon">🌍</span>Appwrite</a>
+<a href="backend-graphql.html"><span class="icon">◼️</span>GraphQL</a>
+<div class="section-title">LOCAL STORAGE</div>
+<a href="storage-sqflite.html"><span class="icon">🗄️</span>SQLite (sqflite)</a>
+<a href="storage-drift.html"><span class="icon">🔐</span>Drift</a>
+<a href="storage-hive.html"><span class="icon">📦</span>Hive</a>
+<a href="storage-isar.html"><span class="icon">⚡</span>Isar</a>
+<div class="section-title">ADVANCED</div>
+<a href="orchestration.html"><span class="icon">🎭</span>Sync Orchestration</a>
+<a href="realtime.html"><span class="icon">📡</span>Real-Time Sync</a>
+<a href="widgets.html"><span class="icon">🎨</span>UI Widgets</a>
+<a href="multi-engine.html"><span class="icon">🔗</span>Multi-Engine</a>
+<a href="diagnostics.html"><span class="icon">🔍</span>Health & Diagnostics</a>
+<a href="testing.html"><span class="icon">🧪</span>Testing</a>
+<div class="section-title">REFERENCE</div>
+<a href="api-reference.html"><span class="icon">📖</span>API Reference</a>
+<a href="changelog.html"><span class="icon">📋</span>Changelog</a>
+</nav>
+<main class="content">
+<h1>Conflict Resolution</h1>
+<p style="opacity:.75;font-size:.9rem;margin-top:-.5rem">ServerWins · LocalWins · LastWriteWins · Custom</p><p>A conflict occurs when a record was modified both locally and remotely since the last sync. Replicore supports four strategies, configured per table.</p><h2>SyncStrategy Enum</h2><table><thead><tr><th>Strategy</th><th>Behaviour</th><th>Use Case</th></tr></thead><tbody><tr><td><code>serverWins</code></td><td>Remote record overwrites local. <strong>Default.</strong></td><td>Reference data, admin settings</td></tr><tr><td><code>localWins</code></td><td>Local record is kept; remote update ignored.</td><td>Drafts, user preferences</td></tr><tr><td><code>lastWriteWins</code></td><td>Record with the latest <code>updated_at</code> wins.</td><td>Collaborative content</td></tr><tr><td><code>custom</code></td><td>Your custom resolver function runs.</td><td>Complex merge logic</td></tr></tbody></table><h2>Setting the Strategy</h2><pre><code class="language-dart">// Per table
+engine.registerTable(TableConfig(
+  name: &#x27;settings&#x27;,
+  columns: [&#x27;id&#x27;, &#x27;key&#x27;, &#x27;value&#x27;, &#x27;updated_at&#x27;, &#x27;deleted_at&#x27;],
+  strategy: SyncStrategy.serverWins,
+));</code></pre><h2>Custom Conflict Resolver</h2><p>When <code>SyncStrategy.custom</code> is selected, you <strong>must</strong> provide a <code>customResolver</code>. The resolver receives both records and returns a <code>ConflictResolution</code>.</p><pre><code class="language-dart">engine.registerTable(TableConfig(
+  name: &#x27;documents&#x27;,
+  columns: [&#x27;id&#x27;, &#x27;title&#x27;, &#x27;body&#x27;, &#x27;version&#x27;, &#x27;updated_at&#x27;, &#x27;deleted_at&#x27;],
+  strategy: SyncStrategy.custom,
+  customResolver: (local, remote) async {
+    // Keep the one with the higher version
+    if ((local[&#x27;version&#x27;] as int) &gt;= (remote[&#x27;version&#x27;] as int)) {
+      return const UseLocal();
+    }
+    return UseRemote(remote);
+  },
+));</code></pre><h3>ConflictResolution Types</h3><table><thead><tr><th>Type</th><th>Meaning</th></tr></thead><tbody><tr><td><code>UseLocal()</code></td><td>Keep the local dirty record as-is.</td></tr><tr><td><code>UseRemote(data)</code></td><td>Overwrite local with the remote record data.</td></tr><tr><td><code>UseMerged(data)</code></td><td>Save a manually merged map combining both versions.</td></tr></tbody></table><div class="callout callout-danger"><span class="icon">🚫</span><div>Using <code>SyncStrategy.custom</code> without providing a <code>customResolver</code> will throw an <code>EngineConfigurationException</code> at registration time.</div></div><h2>How Conflicts Are Detected</h2><p>During the <strong>pull</strong> phase, for each incoming remote record, the engine checks if a local record with the same primary key exists and has <code>is_synced = 0</code> (dirty). If so, it's a conflict. If the local record is already synced, the remote version is simply upserted.</p><div class="page-nav"><a href="sync-engine.html"><div class="label">← Previous</div><div class="title">Sync Engine</div></a><a href="configuration.html" class="next"><div class="label">Next →</div><div class="title">Configuration</div></a></div>
+<div class="footer">Replicore v0.5.1 — Enterprise Local-First Sync for Flutter &middot; MIT License</div>
+</main>
+</div>
+</body></html>

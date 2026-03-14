@@ -22,71 +22,109 @@ except ImportError:
 
 def simple_markdown_to_html(text):
     """Simple fallback markdown to HTML converter"""
-    # Save code blocks
+    import re
+    
+    # STEP 1: Save code blocks with UNIQUE MARKERS
     code_blocks = []
     
     def save_code_block(match):
-        code_blocks.append(match.group(0))
-        return f"__CODE_BLOCK_{len(code_blocks)-1}__"
+        block = match.group(0)
+        code_blocks.append(block)
+        # Use marker that won't be affected by regex replacements
+        return f"<<<CODE_BLOCK_{len(code_blocks)-1}>>>"
     
-    # Extract code blocks
+    # Extract code blocks FIRST
     text = re.sub(r'```[\s\S]*?```', save_code_block, text)
     
-    # Headers
+    # STEP 2: Do all text transformations
+    # Headers (must be before any other formatting)
     text = re.sub(r'^# (.*?)$', r'<h1>\1</h1>', text, flags=re.MULTILINE)
     text = re.sub(r'^## (.*?)$', r'<h2>\1</h2>', text, flags=re.MULTILINE)
     text = re.sub(r'^### (.*?)$', r'<h3>\1</h3>', text, flags=re.MULTILINE)
     text = re.sub(r'^#### (.*?)$', r'<h4>\1</h4>', text, flags=re.MULTILINE)
+    text = re.sub(r'^##### (.*?)$', r'<h5>\1</h5>', text, flags=re.MULTILINE)
+    text = re.sub(r'^###### (.*?)$', r'<h6>\1</h6>', text, flags=re.MULTILINE)
     
-    # Bold and italic
-    text = re.sub(r'\*\*(.*?)\*\*', r'<strong>\1</strong>', text)
-    text = re.sub(r'__(.*?)__', r'<strong>\1</strong>', text)
-    text = re.sub(r'\*(.*?)\*', r'<em>\1</em>', text)
-    text = re.sub(r'_(.*?)_', r'<em>\1</em>', text)
+    # Bold and italic (but not code block markers)
+    text = re.sub(r'\*\*([^\*\n]+?)\*\*', r'<strong>\1</strong>', text)
+    text = re.sub(r'__([^\n_]+?)__', r'<strong>\1</strong>', text)
+    text = re.sub(r'(?<!\*)\*([^\*\n]+?)\*(?!\*)', r'<em>\1</em>', text)
+    text = re.sub(r'(?<!_)_([^\n_]+?)_(?!_)', r'<em>\1</em>', text)
     
     # Links
-    text = re.sub(r'\[(.*?)\]\((.*?)\)', r'<a href="\2">\1</a>', text)
+    text = re.sub(r'\[([^\]]+)\]\(([^\)]+)\)', r'<a href="\2">\1</a>', text)
     
     # Inline code
-    text = re.sub(r'`(.*?)`', r'<code>\1</code>', text)
+    text = re.sub(r'`([^`\n]+?)`', r'<code>\1</code>', text)
     
-    # Lists
+    # Block quotes
+    text = re.sub(r'^> (.*?)$', r'<blockquote>\1</blockquote>', text, flags=re.MULTILINE)
+    
+    # Horizontal rules
+    text = re.sub(r'^---+$', r'<hr>', text, flags=re.MULTILINE)
+    text = re.sub(r'^\*\*\*+$', r'<hr>', text, flags=re.MULTILINE)
+    
+    # STEP 3: Handle paragraphs intelligently
     lines = text.split('\n')
-    result = []
-    in_list = False
+    html_sections = []
+    current_para = []
+    
     for line in lines:
-        if re.match(r'^\s*[-*+] ', line):
-            if not in_list:
-                result.append('<ul>')
-                in_list = True
-            item = re.sub(r'^\s*[-*+] ', '', line)
-            result.append(f'<li>{item}</li>')
-        elif in_list:
-            result.append('</ul>')
-            in_list = False
-            result.append(line)
+        stripped = line.strip()
+        
+        # Don't wrap HTML elements or code blocks
+        if (stripped.startswith('<') or 
+            '<<<CODE_BLOCK_' in stripped or
+            stripped.startswith('-') or
+            stripped.startswith('*')):
+            
+            # Save accumulated paragraph
+            if current_para:
+                para_text = '\n'.join(current_para).strip()
+                if para_text:
+                    html_sections.append(f'<p>{para_text}</p>')
+                current_para = []
+            
+            # Add the HTML line
+            if stripped:
+                html_sections.append(stripped)
+        elif stripped == '':
+            # Empty line ends paragraph
+            if current_para:
+                para_text = '\n'.join(current_para).strip()
+                if para_text:
+                    html_sections.append(f'<p>{para_text}</p>')
+                current_para = []
         else:
-            result.append(line)
+            # Accumulate paragraph text
+            current_para.append(stripped)
     
-    if in_list:
-        result.append('</ul>')
+    # Don't forget last paragraph
+    if current_para:
+        para_text = '\n'.join(current_para).strip()
+        if para_text:
+            html_sections.append(f'<p>{para_text}</p>')
     
-    text = '\n'.join(result)
+    text = '\n'.join(html_sections)
     
-    # Paragraphs
-    text = re.sub(r'\n\n', '</p><p>', text)
-    text = f'<p>{text}</p>'
-    
-    # Restore code blocks
+    # STEP 4: Restore code blocks with proper HTML escaping
     for i, block in enumerate(code_blocks):
-        # Check if it's a dart code block
-        language = 'dart' if 'dart' in block.lower() else 'text'
-        code_content = block.replace('```dart', '').replace('```', '').strip()
-        code_html = f'<pre><code class="language-{language}">{html_escape(code_content)}</code></pre>'
-        text = text.replace(f'__CODE_BLOCK_{i}__', code_html)
-    
-    # Clean up empty paragraphs
-    text = re.sub(r'<p>\s*</p>', '', text)
+        # Extract language and code
+        match = re.match(r'```(\w*)\n([\s\S]*?)\n?```', block)
+        if match:
+            language = match.group(1) or 'text'
+            code_content = match.group(2)
+        else:
+            # Fallback for edge cases
+            language = 'text'
+            code_content = block.replace('```', '').strip()
+        
+        # Escape HTML in code
+        code_content = html_escape(code_content)
+        code_html = f'<pre><code class="language-{language}">{code_content}</code></pre>'
+        
+        # Replace marker with actual code block
+        text = text.replace(f'<<<CODE_BLOCK_{i}>>>', code_html)
     
     return text
 
@@ -410,6 +448,33 @@ pre code {
 
 pre code.language-dart {
     color: #56b6c2;
+}
+
+/* Dark mode code blocks */
+body.dark-mode pre {
+    background: #1e1e1e;
+    color: #d4d4d4;
+    border: 1px solid #404040;
+}
+
+body.dark-mode pre code {
+    color: inherit;
+}
+
+body.dark-mode pre code.language-dart {
+    color: #569cd6;
+}
+
+body.dark-mode pre code.language-bash {
+    color: #4ec9b0;
+}
+
+body.dark-mode pre code.language-yaml {
+    color: #ce9178;
+}
+
+body.dark-mode pre code.language-sql {
+    color: #569cd6;
 }
 
 /* ============================================
