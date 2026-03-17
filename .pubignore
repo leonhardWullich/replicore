@@ -14,3 +14,9 @@ example/build 2/
 example/build.nosync/
 
 example_appwrite/
+
+# Local IDE / helper files
+*.iml
+.DS_Store
+debug_html.py
+generate_docs.py

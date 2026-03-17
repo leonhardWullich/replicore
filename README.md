@@ -33,8 +33,8 @@ Building offline-capable apps is **hard**. Developers struggle with:
 - 📱 **True Offline-First**: Seamless transitions between online/offline states
 - 🧠 **Smart Conflict Resolution**: ServerWins, LocalWins, LastWriteWins, or Custom strategies
 - ⚡ **High Performance**: Keyset pagination, batch operations, transactions (1000+ records/sec)
-- � **Batch Operations (v0.5.1+)**: Eliminates N+1 problem, 50-100x faster syncs
-- �🔄 **Bidirectional Sync**: Pull updates from server, push local changes back
+- ⚡ **Batch Operations (v0.5.1+)**: Eliminates N+1 problem, 50-100x faster syncs
+- 🔄 **Bidirectional Sync**: Pull updates from server, push local changes back
 - 🗑️ **Soft Delete Support**: Gracefully handle deletions across devices
 - ♻️ **Auto-Migration**: Adds required columns if they don't exist
 
@@ -72,12 +72,12 @@ Building offline-capable apps is **hard**. Developers struggle with:
 
 ### 📚 Comprehensive Documentation (NEW!)
 
-Visit [docs/INDEX.md](docs/INDEX.md) for:
-- ⭐ [Getting Started Guide](docs/01_GETTING_STARTED.md) - Your first sync in 30 minutes
-- 🏗️ [Architecture Overview](docs/02_ARCHITECTURE.md) - Deep dive into design
-- 🎯 [Batch Operations Deep Dive](docs/10_PERFORMANCE_OPTIMIZATION.md) - How we achieve 100x speed
-- 🔄 [All Integration Guides](docs/INDEX.md#3️⃣-integration-guides) - Backend-specific setup
-- 🛡️ [Enterprise Patterns](docs/ENTERPRISE_PATTERNS.md) - Production deployment
+Visit the documentation portal for:
+- ⭐ [Getting Started Guide](https://github.com/leonhardWullich/syncitron/blob/main/docs_html/getting-started.html) - Your first sync in 30 minutes
+- 🏗️ [Architecture Overview](https://github.com/leonhardWullich/syncitron/blob/main/docs_html/architecture.html) - Deep dive into design
+- 🎯 [Sync Engine & Performance](https://github.com/leonhardWullich/syncitron/blob/main/docs_html/sync-engine.html) - How to optimize throughput
+- 🔄 [Integration Guides](https://github.com/leonhardWullich/syncitron/blob/main/docs_html/index.html) - Backend-specific setup
+- 🛡️ [Enterprise Patterns](https://github.com/leonhardWullich/syncitron/blob/main/docs_html/index.html) - Production deployment
 - **24 documented guides with 175+ pages of enterprise-grade content**
 
 ### v0.5.0 - Ecosystem Expansion + Real-Time
@@ -104,7 +104,7 @@ Visit [docs/INDEX.md](docs/INDEX.md) for:
 - 🚀 **GraphQL** - any GraphQL backend (Hasura, Apollo, Supabase GraphQL)
 - 💜 **Supabase** (v0.4.0) - still fully supported
 
-**� LocalStores** (pick one for local storage):
+**LocalStores** (pick one for local storage):
 - ✨ **SQLite** (recommended) - Most reliable, suitable for 100K+ records, lowest memory
 - ⚡ **Hive** - Ultra-fast for small datasets, type-safe, Dart-native
 - 🎯 **Drift** - Type-safe SQL wrapper, reactive streams, code generation
@@ -112,7 +112,7 @@ Visit [docs/INDEX.md](docs/INDEX.md) for:
 
 **→ Note**: The "Local Store" is your **client-side database** (SQLite/Hive/Drift/Isar), while **Remote Adapters** connect to your **server backends** (Firebase/Supabase/Appwrite/GraphQL). Both are essential for offline-first sync.
 
-**�👉 New in v0.5.0**: See [Ecosystem Expansion Guide](docs/v0_5_0_ECOSYSTEM_GUIDE.md) or the complete [Documentation Index](docs/INDEX.md) to choose the perfect combination for your needs.
+**New in v0.5.0**: See the [Documentation Portal](https://github.com/leonhardWullich/syncitron/blob/main/docs_html/index.html) to choose the perfect combination for your needs.
 
 ---
 
@@ -764,7 +764,7 @@ syncitron automatically adds:
 |----------|---------|
 | [ENTERPRISE_README.md](ENTERPRISE_README.md) | Comprehensive feature guide |
 | [QUICK_REFERENCE.md](QUICK_REFERENCE.md) | Quick lookup guide |
-| [docs/ENTERPRISE_PATTERNS.md](docs/ENTERPRISE_PATTERNS.md) | Best practices & patterns |
+| [Documentation Portal](https://github.com/leonhardWullich/syncitron/blob/main/docs_html/index.html) | Best practices & patterns |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Contribution guidelines |
 | [CHANGELOG.md](CHANGELOG.md) | Version history |
 | [example/](example/) | Full working example app |
@@ -839,7 +839,7 @@ FloatingActionButton(
 
 ---
 
-## � Real-Time Synchronization
+## Real-Time Synchronization
 
 syncitron includes automatic real-time sync when data changes on the remote backend. Enable it when initializing the engine:
 
@@ -892,7 +892,7 @@ await manager.close();
 
 ---
 
-## �📈 Performance
+## Performance
 
 ### Benchmarks
 
@@ -909,20 +909,20 @@ await manager.close();
 
 ---
 
-## � Complete Documentation Suite
+## Complete Documentation Suite
 
 syncitron comes with comprehensive **27 guides** covering everything you need to master offline-first sync:
 
 ### 🚀 Quick Navigation
-- **Starting out?** → [Getting Started (30 min)](docs/01_GETTING_STARTED.md)
-- **Need architecture overview?** → [System Architecture](docs/02_ARCHITECTURE.md)
-- **Want to optimize?** → [Performance & Batch Operations](docs/10_PERFORMANCE_OPTIMIZATION.md)
-- **Local storage options?** → [SQLite](docs/05_BACKEND_SQFLITE.md) | [Hive](docs/20_BACKEND_HIVE.md) | [Drift](docs/22_BACKEND_DRIFT.md) | [Isar](docs/23_BACKEND_ISAR.md)
-- **Need help?** → [Troubleshooting](docs/17_TROUBLESHOOTING.md) | [FAQ](docs/18_FAQ.md)
-- **Enterprise deployment?** → [Enterprise Patterns](docs/21_ENTERPRISE_PATTERNS.md)
+- **Starting out?** → [Getting Started (30 min)](https://github.com/leonhardWullich/syncitron/blob/main/docs_html/getting-started.html)
+- **Need architecture overview?** → [System Architecture](https://github.com/leonhardWullich/syncitron/blob/main/docs_html/architecture.html)
+- **Want to optimize?** → [Sync Engine Guide](https://github.com/leonhardWullich/syncitron/blob/main/docs_html/sync-engine.html)
+- **Local storage options?** → [SQLite](https://github.com/leonhardWullich/syncitron/blob/main/docs_html/storage-sqflite.html) | [Hive](https://github.com/leonhardWullich/syncitron/blob/main/docs_html/storage-hive.html) | [Drift](https://github.com/leonhardWullich/syncitron/blob/main/docs_html/storage-drift.html) | [Isar](https://github.com/leonhardWullich/syncitron/blob/main/docs_html/storage-isar.html)
+- **Need help?** → [Diagnostics](https://github.com/leonhardWullich/syncitron/blob/main/docs_html/diagnostics.html)
+- **Enterprise deployment?** → [Documentation Portal](https://github.com/leonhardWullich/syncitron/blob/main/docs_html/index.html)
 
 ### 📖 Full Documentation Index
-Access the **complete [Documentation Index](docs/INDEX.md)** for all 27 guides:
+Access the **complete [Documentation Portal](https://github.com/leonhardWullich/syncitron/blob/main/docs_html/index.html)** for all guides:
 - ✅ 5 Learning Paths (Dev, Architect, Performance Engineer, DevOps)
 - ✅ 500+ Code Examples
 - ✅ Real Performance Benchmarks
@@ -930,7 +930,7 @@ Access the **complete [Documentation Index](docs/INDEX.md)** for all 27 guides:
 
 ---
 
-## �🐛 Troubleshooting
+## Troubleshooting
 
 ### Sync Doesn't Start
 - Check engine is initialized: `await engine.init()`
@@ -985,4 +985,4 @@ All rights granted under MIT for already published versions remain valid.
 
 *syncitron v0.5.1 - Enterprise-ready local-first sync for Flutter with 50-100x batch operations*
 
-[→ Explore the complete documentation](docs/INDEX.md)
+[→ Explore the complete documentation](https://github.com/leonhardWullich/syncitron/blob/main/docs_html/index.html)
