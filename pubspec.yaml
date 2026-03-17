@@ -1,7 +1,7 @@
 name: syncitron
 description: Enterprise local-first sync framework for Flutter with offline sync, conflict resolution, and pluggable backends.
 
-version: 0.5.1
+version: 0.5.2
 homepage: https://github.com/leonhardWullich/syncitron
 repository: https://github.com/leonhardWullich/syncitron
 documentation: https://github.com/leonhardWullich/syncitron/blob/main/docs_html/index.html
