@@ -454,11 +454,17 @@ void main() {
             'updated_at': '2024-01-03T00:00:00Z',
           },
         ];
-      ConflictResolver mergeResolver = (l, r) async => UseMerged({
-        'uuid': l['uuid'],
-        'title': '${l['title']}+${r['title']}',
-        'updated_at': r['updated_at'],
-      });
+      Future<ConflictResolution> mergeResolver(
+        Map<String, dynamic> l,
+        Map<String, dynamic> r,
+      ) async {
+        return UseMerged({
+          'uuid': l['uuid'],
+          'title': '${l['title']}+${r['title']}',
+          'updated_at': r['updated_at'],
+        });
+      }
+
       final config = TableConfig(
         name: 'notes',
         primaryKey: 'uuid',

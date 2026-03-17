@@ -1,8 +1,5 @@
 import 'package:syncitron/syncitron.dart';
 
-import 'logger.dart';
-import 'metrics.dart';
-
 /// Defines the lifecycle and behavior of custom sync orchestrations.
 ///
 /// Extend this interface to implement domain-specific sync logic beyond
@@ -126,7 +123,7 @@ class OfflineFirstSyncOrchestration extends SyncOrchestrationStrategy {
       } on SyncNetworkException catch (e) {
         networkErrors++;
         context.logger.warning(
-          'Network error syncing $tableName (${networkErrors}/$maxNetworkErrors)',
+          'Network error syncing $tableName ($networkErrors/$maxNetworkErrors)',
           error: e,
         );
 

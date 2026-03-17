@@ -2,6 +2,7 @@
 build/
 build.nosync/
 doc/api/
+docs_html/
 
 # Example local build artifacts
 example/.dart_tool/
@@ -11,9 +12,3 @@ example/.flutter-plugins-dependencies
 example/.DS_Store
 example/build 2/
 example/build.nosync/
-
-# Legacy pre-rename files (defensive)
-lib/replicore.dart
-test/replicore_test.dart
-replicore_logo.jpeg
-docs_html/INDEX.html

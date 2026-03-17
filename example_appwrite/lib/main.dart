@@ -1,8 +1,9 @@
+import 'package:appwrite/appwrite.dart';
+import 'package:appwrite/models.dart' as models;
 import 'package:flutter/material.dart';
 import 'package:path/path.dart';
 import 'package:syncitron/syncitron.dart';
 import 'package:sqflite/sqflite.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'sync/sync_service.dart';
 import 'ui/login_screen.dart';
@@ -14,22 +15,42 @@ late SyncEngine appEngine;
 late Logger appLogger;
 late MetricsCollector appMetricsCollector;
 RealtimeSubscriptionManager? appRealtimeManager;
+late Account appAccount;
+models.User? appUser;
+
+// ── Appwrite Configuration ───────────────────────────────────────────────────
+// IMPORTANT: Replace these with your own Appwrite project credentials.
+/*const _appwriteEndpoint = 'https://cloud.appwrite.io/v1';
+const _appwriteProjectId = 'YOUR_PROJECT_ID';
+const _appwriteDatabaseId = 'YOUR_DATABASE_ID';*/
+
+const _appwriteEndpoint = 'https://fra.cloud.appwrite.io/v1';
+const _appwriteProjectId = '69b92d93000a04a6f527';
+const _appwriteDatabaseId = '69b930f7000d3b9bc7c9';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // ── 1. Initialize Supabase ─────────────────────────────────────────────────
-  // IMPORTANT: Run the setup in example/supabase_setup.md to create the tables
-  // or provide the required credentials below.
-  await Supabase.initialize(
-    url: 'https://eymcvxrloanvjapoogkh.supabase.co',
-    anonKey:
-        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV5bWN2eHJsb2FudmphcG9vZ2toIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI2MzM3ODEsImV4cCI6MjA4ODIwOTc4MX0.Coe-WYoXPsf88Xwy4ZIgRyrA0w4nq9Mm1bC5VrCc1lI',
-  );
+  // ── 1. Initialize Appwrite ─────────────────────────────────────────────────
+  final client = Client()
+      .setEndpoint(_appwriteEndpoint)
+      .setProject(_appwriteProjectId)
+      .setSelfSigned(status: true); // Set to false in production
+
+  appAccount = Account(client);
+  final databases = Databases(client);
+
+  // Check if user is already logged in
+  try {
+    appUser = await appAccount.get();
+  } catch (_) {
+    // Not logged in — will show login screen
+    appUser = null;
+  }
 
   // ── 2. Open Local SQLite Database ──────────────────────────────────────────
   appDb = await openDatabase(
-    join(await getDatabasesPath(), 'syncitron_example.db'),
+    join(await getDatabasesPath(), 'syncitron_appwrite_example.db'),
     version: 1,
     onCreate: (db, _) async {
       // Minimal schema — syncitron adds sync columns automatically via
@@ -51,12 +72,12 @@ Future<void> main() async {
   final localStore =
       SqfliteStore(appDb, conflictAlgorithm: ConflictAlgorithm.replace);
 
-  // Create remote adapter for Supabase
-  final remoteAdapter = SupabaseAdapter(
-    client: Supabase.instance.client,
+  // Create remote adapter for Appwrite
+  final remoteAdapter = AppwriteAdapter(
+    client: client,
+    database: databases,
     localStore: localStore,
-    postgresChangeEventAll: PostgresChangeEvent.all,
-    isAuthException: (e) => e is AuthException,
+    databaseId: _appwriteDatabaseId,
   );
 
   // Create logger (console output for development)
@@ -111,9 +132,9 @@ Future<void> main() async {
     );
 
     try {
-      // Subscribe to real-time changes on the 'todos' table
+      // Subscribe to real-time changes on the 'todos' collection
       await appRealtimeManager!.initialize(['todos']);
-      appLogger.info('Real-time subscriptions active for todos table.');
+      appLogger.info('Real-time subscriptions active for todos collection.');
     } catch (e) {
       appLogger.error('Failed to initialize real-time subscriptions', error: e);
       // Continue without real-time — periodic sync will still work
@@ -152,15 +173,13 @@ class TodoApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final currentUser = Supabase.instance.client.auth.currentUser;
-
     return MaterialApp(
-      title: 'syncitron Todo Example',
+      title: 'syncitron Todo Example (Appwrite)',
       theme: ThemeData(
         colorSchemeSeed: Colors.indigo,
         useMaterial3: true,
       ),
-      home: currentUser != null
+      home: appUser != null
           ? TodoListScreen(
               db: db,
               engine: engine,

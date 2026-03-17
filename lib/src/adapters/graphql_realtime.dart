@@ -1,3 +1,5 @@
+// ignore_for_file: use_null_aware_elements
+
 import 'dart:async';
 
 import '../core/realtime_subscription.dart';
@@ -183,10 +185,7 @@ class GraphQLRealtimeProvider implements RealtimeSubscriptionProvider {
             table: table,
             operation: operation,
             record: record,
-            metadata: {
-              if (previous != null) 'previous': previous,
-              'provider': 'graphql',
-            },
+            metadata: {'previous': previous, 'provider': 'graphql'},
             timestamp: timestamp != null
                 ? DateTime.parse(timestamp)
                 : DateTime.now(),

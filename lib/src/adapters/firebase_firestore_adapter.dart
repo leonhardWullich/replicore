@@ -333,6 +333,6 @@ class FirebaseFirestoreAdapter implements RemoteAdapter {
 }
 
 class RemoteAdapterException extends SyncNetworkException {
-  RemoteAdapterException({required String message, required Object cause})
-    : super(table: '', message: message, cause: cause);
+  RemoteAdapterException({required super.message, required super.cause})
+    : super(table: '');
 }

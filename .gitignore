@@ -32,7 +32,7 @@ migrate_working_dir/
 /coverage/
 
 # Keep tracked files visible to pub publish checks
-!docs_html/INDEX.html
+!docs_html/index.html
 !lib/replicore.dart
 !replicore_logo.jpeg
 !test/replicore_test.dart

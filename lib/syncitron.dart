@@ -57,6 +57,7 @@
 ///
 /// See the documentation for more details on advanced features:
 /// https://github.com/leonhardWullich/syncitron
+library;
 
 export 'src/core/config.dart';
 export 'src/core/diagnostics.dart';

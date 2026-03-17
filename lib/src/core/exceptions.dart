@@ -1,3 +1,5 @@
+// ignore_for_file: camel_case_types
+
 /// Base class for all exceptions thrown by the syncitron framework.
 ///
 /// Catching [syncitronException] is sufficient to handle any framework error.
@@ -25,7 +27,7 @@ sealed class syncitronException implements Exception {
   @override
   String toString() {
     final causeStr = cause != null ? ' (caused by: $cause)' : '';
-    return '${runtimeType}: $message$causeStr';
+    return '$runtimeType: $message$causeStr';
   }
 }
 
@@ -141,5 +143,5 @@ class UnregisteredTableException extends syncitronException {
 /// or when configuration is invalid (e.g. [SyncStrategy.custom] without a
 /// [ConflictResolver]).
 class EngineConfigurationException extends syncitronException {
-  const EngineConfigurationException(String message) : super(message);
+  const EngineConfigurationException(super.message);
 }

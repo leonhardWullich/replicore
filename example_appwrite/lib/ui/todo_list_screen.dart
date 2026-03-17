@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:syncitron/syncitron.dart';
 import 'package:sqflite/sqflite.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../data/todo.dart';
 import '../data/todo_repository.dart';
-import '../main.dart'; // for appRealtimeManager
+import '../main.dart'; // for appRealtimeManager, appAccount, appUser
 import '../sync/sync_service.dart';
 
 class TodoListScreen extends StatefulWidget {
@@ -36,7 +35,7 @@ class _TodoListScreenState extends State<TodoListScreen> {
   final List<_SyncHistoryEntry> _syncHistory = [];
   bool _syncing = false;
 
-  String get _userId => Supabase.instance.client.auth.currentUser!.id;
+  String get _userId => appUser!.$id;
 
   @override
   void initState() {
@@ -174,7 +173,7 @@ class _TodoListScreenState extends State<TodoListScreen> {
       widget.logger.error('Auth error during sync', error: e);
       // Navigate to login
       if (mounted) {
-        await Supabase.instance.client.auth.signOut();
+        await appAccount.deleteSession(sessionId: 'current');
         if (mounted) Navigator.of(context).pushReplacementNamed('/');
       }
     } catch (e) {
@@ -193,7 +192,8 @@ class _TodoListScreenState extends State<TodoListScreen> {
   }
 
   Future<void> _onSignOut() async {
-    await Supabase.instance.client.auth.signOut();
+    await appAccount.deleteSession(sessionId: 'current');
+    appUser = null;
     if (!mounted) return;
     Navigator.of(context).pushReplacementNamed('/');
   }

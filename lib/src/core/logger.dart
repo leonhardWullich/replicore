@@ -1,3 +1,5 @@
+import 'dart:developer' as developer;
+
 /// Severity levels for log messages.
 enum LogLevel {
   debug(0),
@@ -146,9 +148,9 @@ class ConsoleLogger implements Logger {
 
   void _logIfLevel(LogEntry entry) {
     if (entry.level.isAtLeast(minLevel)) {
-      print(entry.toString());
+      developer.log(entry.toString(), name: 'syncitron');
       if (entry.context != null) {
-        print('  Context: ${entry.context}');
+        developer.log('Context: ${entry.context}', name: 'syncitron');
       }
     }
   }

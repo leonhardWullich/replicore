@@ -251,12 +251,12 @@ class SyncErrorBanner extends StatelessWidget {
             ? (
                 Icons.wifi_off,
                 'You\'re offline. Changes saved locally.',
-                Colors.orange.withOpacity(0.1),
+                Colors.orange.withValues(alpha: 0.1),
               )
             : (
                 Icons.cloud_off,
                 'Server unreachable. Retrying automatically.',
-                Colors.orange.withOpacity(0.1),
+                Colors.orange.withValues(alpha: 0.1),
               ),
       SyncAuthException() => (
         Icons.lock_outline,

@@ -1,3 +1,5 @@
+// ignore_for_file: camel_case_types
+
 /// Configuration for the syncitron sync engine.
 ///
 /// All parameters have sensible enterprise defaults:

@@ -1,0 +1,37 @@
+name: todo_app_appwrite
+description: >
+  Example app demonstrating syncitron offline-first sync with a simple
+  Todo list backed by SQLite (local) and Appwrite (remote).
+
+publish_to: none
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.3.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # syncitron — local-first sync framework
+  syncitron:
+    path: ../
+
+  # Local database
+  sqflite: ^2.3.3
+  path: ^1.9.0
+
+  # Remote backend
+  appwrite: ^13.0.0
+
+  # Utilities
+  uuid: ^4.4.0           # for generating collision-safe UUIDs as primary keys
+  connectivity_plus: ^7.0.0  # to trigger sync on reconnect
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+
+flutter:
+  uses-material-design: true

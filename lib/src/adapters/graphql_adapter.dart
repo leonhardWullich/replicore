@@ -1,3 +1,5 @@
+// ignore_for_file: use_null_aware_elements
+
 import 'dart:async';
 
 import '../core/exceptions.dart';
@@ -39,7 +41,8 @@ class GraphQLAdapter implements RemoteAdapter {
   final String Function(PullRequest) queryBuilder;
 
   /// Custom function to build upsert mutations.
-  /// Signature: String Function(String table, Map<String, dynamic>) -> returns GraphQL mutation
+  /// Signature: `String Function(String table, Map<String, dynamic>)`
+  /// returns a GraphQL mutation.
   final String Function(String, Map<String, dynamic>) mutationBuilder;
 
   /// Custom function to build soft delete mutations.
@@ -141,7 +144,7 @@ class GraphQLAdapter implements RemoteAdapter {
               variables: {
                 'table': table,
                 'data': data,
-                if (idempotencyKey != null) 'idempotencyKey': idempotencyKey,
+                'idempotencyKey': ?idempotencyKey,
               },
             ),
           )
@@ -187,7 +190,7 @@ class GraphQLAdapter implements RemoteAdapter {
                 'table': table,
                 'id': id,
                 'payload': payload,
-                if (idempotencyKey != null) 'idempotencyKey': idempotencyKey,
+                'idempotencyKey': ?idempotencyKey,
               },
             ),
           )
@@ -369,7 +372,7 @@ class GraphQLAdapter implements RemoteAdapter {
 
 /// Helper placeholder for GraphQL document parsing.
 /// In real use, you'd import from 'graphql/language/ast.dart'
-class gql {
+class Gql {
   static dynamic call(String query) {
     // In actual use, this would parse the GraphQL query string
     return query;

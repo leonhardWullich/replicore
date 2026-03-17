@@ -37,15 +37,15 @@ class DriftStore implements LocalStore {
   final Map<String, dynamic> tables;
 
   /// Custom query function for metadata retrieval.
-  /// Signature: Future<Map<String, dynamic>?> Function(String key)
+  /// Signature: `Future<Map<String, dynamic>?> Function(String key)`
   final Function(String) readMetadataQuery;
 
   /// Custom upsert function for metadata persistence.
-  /// Signature: Future<void> Function(String key, String value)
+  /// Signature: `Future<void> Function(String key, String value)`
   final Function(String, String) writeMetadataQuery;
 
   /// Custom delete function for metadata cleanup.
-  /// Signature: Future<void> Function(String key)
+  /// Signature: `Future<void> Function(String key)`
   final Function(String) deleteMetadataQuery;
 
   DriftStore({

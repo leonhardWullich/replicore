@@ -27,7 +27,7 @@ class HiveStore implements LocalStore {
   final dynamic metadataBox;
 
   /// Factory function to get/open Hive boxes for data tables.
-  /// Signature: Future<Box> Function(String tableName)
+  /// Signature: `Future<Box> Function(String tableName)`
   final Function(String) dataBoxFactory;
 
   /// Cache of opened data boxes to avoid repeated openings.
