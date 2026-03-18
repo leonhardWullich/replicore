@@ -73,11 +73,10 @@ Building offline-capable apps is **hard**. Developers struggle with:
 ### 📚 Comprehensive Documentation (NEW!)
 
 Visit the documentation portal for:
-- ⭐ [Getting Started Guide](https://github.com/leonhardWullich/syncitron/blob/main/docs_html/getting-started.html) - Your first sync in 30 minutes
-- 🏗️ [Architecture Overview](https://github.com/leonhardWullich/syncitron/blob/main/docs_html/architecture.html) - Deep dive into design
-- 🎯 [Sync Engine & Performance](https://github.com/leonhardWullich/syncitron/blob/main/docs_html/sync-engine.html) - How to optimize throughput
-- 🔄 [Integration Guides](https://github.com/leonhardWullich/syncitron/blob/main/docs_html/index.html) - Backend-specific setup
-- 🛡️ [Enterprise Patterns](https://github.com/leonhardWullich/syncitron/blob/main/docs_html/index.html) - Production deployment
+- ⭐ [Getting Started Guide](https://docs.syncitron.dev/getting-started.html) - Your first sync in 30 minutes
+- 🏗️ [Architecture Overview](https://docs.syncitron.dev/architecture.html) - Deep dive into design
+- 🎯 [Sync Engine & Performance](https://docs.syncitron.dev/sync-engine.html) - How to optimize throughput
+- 🔄 [Integration Guides](https://docs.syncitron.dev/index.html) - Backend-specific setup
 - **24 documented guides with 175+ pages of enterprise-grade content**
 
 ### v0.5.0 - Ecosystem Expansion + Real-Time
@@ -112,7 +111,7 @@ Visit the documentation portal for:
 
 **→ Note**: The "Local Store" is your **client-side database** (SQLite/Hive/Drift/Isar), while **Remote Adapters** connect to your **server backends** (Firebase/Supabase/Appwrite/GraphQL). Both are essential for offline-first sync.
 
-**New in v0.5.0**: See the [Documentation Portal](https://github.com/leonhardWullich/syncitron/blob/main/docs_html/index.html) to choose the perfect combination for your needs.
+**New in v0.5.0**: See the [Documentation Portal](https://docs.syncitron.dev) to choose the perfect combination for your needs.
 
 ---
 
@@ -764,7 +763,7 @@ syncitron automatically adds:
 |----------|---------|
 | [ENTERPRISE_README.md](ENTERPRISE_README.md) | Comprehensive feature guide |
 | [QUICK_REFERENCE.md](QUICK_REFERENCE.md) | Quick lookup guide |
-| [Documentation Portal](https://github.com/leonhardWullich/syncitron/blob/main/docs_html/index.html) | Best practices & patterns |
+| [Documentation Portal](https://docs.syncitron.dev) | Best practices & patterns |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Contribution guidelines |
 | [CHANGELOG.md](CHANGELOG.md) | Version history |
 | [example/](example/) | Full working example app |
@@ -914,15 +913,14 @@ await manager.close();
 syncitron comes with comprehensive **27 guides** covering everything you need to master offline-first sync:
 
 ### 🚀 Quick Navigation
-- **Starting out?** → [Getting Started (30 min)](https://github.com/leonhardWullich/syncitron/blob/main/docs_html/getting-started.html)
-- **Need architecture overview?** → [System Architecture](https://github.com/leonhardWullich/syncitron/blob/main/docs_html/architecture.html)
-- **Want to optimize?** → [Sync Engine Guide](https://github.com/leonhardWullich/syncitron/blob/main/docs_html/sync-engine.html)
-- **Local storage options?** → [SQLite](https://github.com/leonhardWullich/syncitron/blob/main/docs_html/storage-sqflite.html) | [Hive](https://github.com/leonhardWullich/syncitron/blob/main/docs_html/storage-hive.html) | [Drift](https://github.com/leonhardWullich/syncitron/blob/main/docs_html/storage-drift.html) | [Isar](https://github.com/leonhardWullich/syncitron/blob/main/docs_html/storage-isar.html)
-- **Need help?** → [Diagnostics](https://github.com/leonhardWullich/syncitron/blob/main/docs_html/diagnostics.html)
-- **Enterprise deployment?** → [Documentation Portal](https://github.com/leonhardWullich/syncitron/blob/main/docs_html/index.html)
+- **Starting out?** → [Getting Started (30 min)](https://docs.syncitron.dev/getting-started.html)
+- **Need architecture overview?** → [System Architecture](https://docs.syncitron.dev/architecture.html)
+- **Want to optimize?** → [Sync Engine Guide](https://docs.syncitron.dev/sync-engine.html)
+- **Local storage options?** → [SQLite](https://docs.syncitron.dev/storage-sqflite.html) | [Hive](https://docs.syncitron.dev/storage-hive.html) | [Drift](https://docs.syncitron.dev/storage-drift.html) | [Isar](https://docs.syncitron.dev/storage-isar.html)
+- **Need help?** → [Diagnostics](https://docs.syncitron.dev/diagnostics.html)
 
 ### 📖 Full Documentation Index
-Access the **complete [Documentation Portal](https://github.com/leonhardWullich/syncitron/blob/main/docs_html/index.html)** for all guides:
+Access the **complete [Documentation Portal](https://docs.syncitron.dev)** for all guides:
 - ✅ 5 Learning Paths (Dev, Architect, Performance Engineer, DevOps)
 - ✅ 500+ Code Examples
 - ✅ Real Performance Benchmarks
@@ -984,5 +982,3 @@ All rights granted under MIT for already published versions remain valid.
 **Built for teams who demand reliability, observability, and performance. 🚀**
 
 *syncitron v0.5.1 - Enterprise-ready local-first sync for Flutter with 50-100x batch operations*
-
-[→ Explore the complete documentation](https://github.com/leonhardWullich/syncitron/blob/main/docs_html/index.html)
